@@ -1,0 +1,31 @@
+{
+  "summary": "Retest of the iteration 6 findings. Backend: 67 of 67 pytest tests pass in /app/backend/tests/test_apikeys_gateway.py (updated for the fixes). All 5 gateway fixes are confirmed. (1) slack/oauth/start through the gateway with an admin key returns 200 with the same response keys as the direct call. (2) GET console/fleet/routing returns 200 for read, write and admin keys, while PUT console/fleet/{id}/routing is still 403 INSUFFICIENT_SCOPE for read and write keys. (3) The Authorization scheme now matches in any case (bearer, BEARER, Bearer), and Basic is rejected with API_KEY_MISSING. (4) Repeated query params: confirmed in the code (multi_items); the HTTP test only checks that status codes match the direct call. (5) verify no longer records usage: after verifying an admin key, useCount stays 0, lastUsedAt/lastUsedPath stay null and no events are logged; sending a spoofed X-Fras-Probe header still counts as usage. The full scope matrix still passes (read/write/admin/missing/invalid/wrong-secret/disabled/revoked/rotated). Frontend: the Overview 'COMPLIANT' stat (stat-compliance-code) is fully readable, with no overflow and no truncation, at 390, 768, 1024, 1280 and 1920px in both light and dark themes. All other stat values fit their cards, and no page scrolls horizontally. At 1024px the Health Requirements, Delegation Criteria and Enforcement panels show full values. NEW: at 768px the new md:grid-cols-2 makes these panels too narrow, so their values are cut (see design_issues). The word 'Public' appears on none of the 15 pages. API Keys: with only revoked keys the empty text is 'No active keys (33 revoked). Create a new one to call the API.' The write snippet is now PUT /console/audit/archive-schedule and alerts/dispatch is gone. UI regression passed: create (write scope, email, 30-day expiry) → reveal → copy (clipboard matches the token) → masked row → verify panel (read 200, write 200, admin 403, usage still 0 calls) → edit (rename, change to admin, shows 'full') → rotate (new keyId, old row hidden, scope and expiry kept) → revoke (empty text updates to 35 revoked). Both UI tokens return 401 API_KEY_REVOKED. All 35 keys are now revoked. Slack config was not touched and no Slack messages were sent.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Overview at 768px (tablet, sidebar visible), both themes", "issues": ["Regression from the md:grid-cols-2 change. The Health Requirements and Delegation Criteria panels are about 220px wide, so the right-hand values are cut: '99.9…', '98…', '0…', 'p…', 'pa…'. The governanceStanding value is not shown at all, and labels such as 'Uptime ≥ 99.9%' wrap onto 2 lines. Fix: switch to 2 columns at lg instead of md (the sidebar takes 256px), or give the row value (kit.jsx line 96: 'truncate max-w-[50%]') shrink-0/whitespace-nowrap and let the label truncate instead."]},
+      {"screen": "API Keys", "issues": ["Minor: the write quickstart snippet sends '{\"enabled\":true}'. If a user runs it as-is, the archive schedule is turned on when it was off. Consider a no-op body such as the current timeUtc, or say so in the snippet text.", "Minor: after rotating or revoking a key, the Verify panel still shows the old result ('Key TEST_ui_it7 · active'). Clear it or refresh it after key actions."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_apikeys_gateway.py", "/app/test_reports/pytest/apikeys_gateway_it7.xml"],
+  "action_items": [
+    "Overview 768px: the Health/Delegation/Enforcement panel values are cut again because the panel grid is 2 columns from md. Use lg:grid-cols-2 xl:grid-cols-3, or make the row value shrink-0",
+    "Optional: make the write snippet side-effect free, and clear the Verify result after rotate/revoke"
+  ],
+  "critical_code_review_comments": [
+    "The gateway forwards client-supplied x-forwarded-host/x-forwarded-for unchanged. slack/oauth/start trusts the host for origin validation. This is fine behind the ingress, which overwrites these headers, but do not rely on them for security decisions",
+    "PROBE_TOKEN is per process. verify calls the gateway in the same process through ASGI, so it works with multiple workers, but probe calls still forward GET v1/validator/status to the real endpoint (harmless)",
+    "Still open from iteration 6: api_key_events has no TTL or cap; there is no rate limiting on /api/ext or verify; key management needs no login (accepted risk, by user choice)"
+  ],
+  "updated_files": ["/app/backend/tests/test_apikeys_gateway.py"],
+  "success_rate": {"backend": "100% (67/67)", "frontend": "95% (all requested fixes verified; new truncation in the 768px Overview panels)"},
+  "seed_data_creation": "Test keys were created and all revoked (35 keys total, all revoked). The pytest run temporarily created and deleted fleet validator test_gw_val, and set then deleted fras_val_003 routing. The archive-schedule was PUT with its existing values. slack/oauth/start was called twice, which inserts slack_oauth_states docs. Slack destinations were not touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run with: REACT_APP_BACKEND_URL=<url> pytest /app/backend/tests/test_apikeys_gateway.py -n0 -p no:cacheprovider (about 30s, sends no Slack messages, and the fixture revokes the keys it creates). The UI route is /access-keys. The theme toggle is data-testid=theme-toggle. Overview panel truncation can be checked by measuring .truncate elements whose scrollWidth is greater than clientWidth at 768px."
+}

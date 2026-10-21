@@ -77,7 +77,7 @@ export default function Overview() {
         <Stat label="Stake" value={`${(v.stake / 1000).toFixed(0)}k`} tone={c.criteria.minStake ? "ok" : "bad"} sub="min 100k FRAS" testId="stat-stake" />
       </div>
 
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+      <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
         <Panel title="Health Requirements" testId="health-panel">
           <Check ok={c.health.uptime} label="Uptime ≥ 99.9%" detail={`${v.uptime}%`} />
           <Check ok={c.health.voteParticipation} label="Vote participation ≥ 95%" detail={`${v.voteParticipation}%`} />

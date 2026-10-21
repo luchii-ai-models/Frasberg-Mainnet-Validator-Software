@@ -92,8 +92,8 @@ export const Json = ({ value, testId, className = "max-h-80" }) => (
 
 export const Check = ({ ok, label, detail, testId }) => (
   <div data-testid={testId} className="flex items-center justify-between gap-3 py-2.5 border-b border-[var(--line)] last:border-0">
-    <div className="flex items-center gap-3"><Dot tone={ok ? "ok" : "bad"} /><span className="text-sm text-[var(--text)]">{label}</span></div>
-    <span className="font-mono text-[11px] text-[var(--text-muted)] text-right truncate max-w-[50%]">{detail}</span>
+    <div className="flex items-center gap-3 min-w-0"><Dot tone={ok ? "ok" : "bad"} /><span className="text-sm text-[var(--text)] truncate" title={typeof label === "string" ? label : undefined}>{label}</span></div>
+    <span className="font-mono text-[11px] text-[var(--text-muted)] text-right whitespace-nowrap shrink-0">{detail}</span>
   </div>
 );
 

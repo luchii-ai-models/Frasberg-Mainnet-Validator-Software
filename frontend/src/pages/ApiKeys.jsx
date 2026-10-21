@@ -65,11 +65,11 @@ function VerifyPanel() {
 
 function Quickstart({ base }) {
   const read = `curl -H "X-API-Key: $FRAS_KEY" ${base}/v1/validator/status`;
-  const write = `curl -X PUT -H "X-API-Key: $FRAS_KEY" -H "Content-Type: application/json" -d '{"enabled":true}' ${base}/console/audit/archive-schedule`;
+  const write = `curl -X POST -H "X-API-Key: $FRAS_KEY" ${base}/_probe/write`;
   return (
     <Panel title="How to call the API" testId="apikey-quickstart">
       <p className="text-sm text-[var(--text-2)] mb-4">Every endpoint is available under <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-[var(--surface-2)]">{base}</code>. Send the key in the <code className="font-mono text-xs">X-API-Key</code> header (or <code className="font-mono text-xs">Authorization: Bearer</code>).</p>
-      {[["Read", read, "read"], ["Write", write, "write"]].map(([l, cmd, id]) => (
+      {[["Read", read, "read"], ["Write check (no changes made)", write, "write"]].map(([l, cmd, id]) => (
         <div key={id} className="mb-3">
           <div className="text-xs font-medium text-[var(--text-muted)] mb-1">{l}</div>
           <div className="flex items-center gap-2"><code className="terminal flex-1 font-mono text-xs p-3 break-all">{cmd}</code><CopyButton text={cmd} testId={`apikey-copy-${id}-snippet`} /></div>
@@ -85,6 +85,7 @@ export default function ApiKeys() {
   const [reveal, setReveal] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [showRevoked, setShowRevoked] = useState(false);
+  const [ver, setVer] = useState(0);
   if (!d) return null;
   const base = `${API}/ext`;
   const active = d.keys.filter((k) => k.status === "active");
@@ -94,6 +95,7 @@ export default function ApiKeys() {
     setConfirm(null);
     const r = await call("post", `/console/apikeys/${k.keyId}/${action}`, null, action === "revoke" ? "Key revoked" : "Key rotated");
     if (r && action === "rotate") setReveal(r);
+    setVer((v) => v + 1);
     reload();
   };
   const toggle = async (k, enabled) => { await call("put", `/console/apikeys/${k.keyId}`, { enabled }, enabled ? "Key enabled" : "Key disabled"); reload(); };
@@ -114,7 +116,7 @@ export default function ApiKeys() {
         {rows.map((k) => <KeyRow key={k.keyId} k={k} onEdit={setEdit} onToggle={toggle} onAction={(key, action) => setConfirm({ k: key, action })} />)}
       </Panel>
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
-        <VerifyPanel />
+        <VerifyPanel key={ver} />
         <Quickstart base={base} />
       </div>
       <Panel title="Recent API calls" testId="apikey-events">

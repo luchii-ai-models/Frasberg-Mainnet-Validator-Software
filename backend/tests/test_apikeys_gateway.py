@@ -16,7 +16,7 @@ GETS = ["", "v1/validator/version", "v1/validator/status", "v1/validator/complia
         "console/audit/archives", "console/alerts", "console/upgrades", "console/fleet/trends",
         "console/audit/archive-schedule", "console/upgrades/nudges", "console/fleet/routing", "console/apikeys",
         "console/slack/oauth/callback?state=TEST_nope"]
-ADMIN_GETS = {"console/apikeys", "console/slack/oauth/callback?state=TEST_nope", "console/fleet/routing"}
+ADMIN_GETS = {"console/apikeys", "console/slack/oauth/callback?state=TEST_nope"}
 
 
 def mk(scope, name=None, **kw):
@@ -26,8 +26,9 @@ def mk(scope, name=None, **kw):
     return r.json()
 
 
-def ext(method, path, key, **kw):
+def ext(method, path, key, headers=None, **kw):
     h = {"X-API-Key": key} if key else {}
+    h.update(headers or {})
     return S.request(method, f"{E}/{path}", headers=h, **kw)
 
 
@@ -118,6 +119,24 @@ class TestKeyManagement:
         d = S.post(f"{A}/console/apikeys/verify", json={"key": "fk_live.deadbeef.zzzzzzzzzz"}).json()
         assert not d["valid"] and d["key"] is None and d["checks"][0]["code"] == "API_KEY_INVALID"
 
+    def test_verify_does_not_record_usage(self):
+        k = mk("admin")
+        before = next(x for x in S.get(f"{A}/console/apikeys").json()["keys"] if x["keyId"] == k["keyId"])
+        d = S.post(f"{A}/console/apikeys/verify", json={"key": k["token"]}).json()
+        assert d["valid"] and all(c["allowed"] for c in d["checks"])
+        lst = S.get(f"{A}/console/apikeys").json()
+        after = next(x for x in lst["keys"] if x["keyId"] == k["keyId"])
+        assert after["useCount"] == before["useCount"] == 0 and after["lastUsedPath"] is None and after["lastUsedAt"] is None
+        assert not any(e["keyId"] == k["keyId"] for e in lst["events"])
+        assert d["key"]["useCount"] == 0
+
+    def test_probe_header_spoof_still_recorded(self):
+        k = mk("read")
+        ext("GET", "v1/validator/status", k["token"], headers=None)
+        S.get(f"{E}/v1/validator/status", headers={"X-API-Key": k["token"], "X-Fras-Probe": "guess"})
+        row = next(x for x in S.get(f"{A}/console/apikeys").json()["keys"] if x["keyId"] == k["keyId"])
+        assert row["useCount"] == 2
+
     def test_usage_tracking(self, keys):
         k = keys["read"]
         ext("GET", "console/overview", k["token"])
@@ -146,6 +165,16 @@ class TestGatewayAuth:
     def test_bearer(self, keys):
         r = S.get(f"{E}/v1/validator/status", headers={"Authorization": f"Bearer {keys['read']['token']}"})
         assert r.status_code == 200 and r.headers["X-API-Scope"] == "read" and r.headers["X-API-Key-Id"] == keys["read"]["keyId"]
+
+
+    @pytest.mark.parametrize("scheme", ["bearer", "BEARER", "Bearer"])
+    def test_bearer_case_insensitive(self, keys, scheme):
+        r = S.get(f"{E}/v1/validator/status", headers={"Authorization": f"{scheme} {keys['write']['token']}"})
+        assert r.status_code == 200 and r.headers["X-API-Scope"] == "write"
+
+    def test_basic_scheme_rejected(self, keys):
+        r = S.get(f"{E}/v1/validator/status", headers={"Authorization": f"Basic {keys['write']['token']}"})
+        assert r.status_code == 401 and code(r) == "API_KEY_MISSING"
 
 
 # ---- every GET endpoint with read/write/admin ----
@@ -177,6 +206,22 @@ class TestGatewayGets:
         d = S.get(f"{A}/console/slack/oauth/start", params={"origin": origin})
         r = ext("GET", "console/slack/oauth/start", keys["admin"]["token"], params={"origin": origin})
         print("slack oauth start direct", d.status_code, "gateway", r.status_code, r.text[:150])
+        assert r.status_code == d.status_code == 200, r.text[:300]
+        assert r.json() == d.json() or set(r.json()) == set(d.json())
+
+    def test_fleet_routing_scopes(self, keys):
+        for s in ("read", "write", "admin"):
+            r = ext("GET", "console/fleet/routing", keys[s]["token"])
+            assert r.status_code == 200, (s, r.text[:200])
+        for s in ("read", "write"):
+            r = ext("PUT", "console/fleet/fras_val_003/routing", keys[s]["token"], json={"slackMemberId": "U12345678"})
+            assert r.status_code == 403 and code(r) == "INSUFFICIENT_SCOPE"
+            r = ext("GET", "console/fleet/fras_val_003/routing", keys[s]["token"])
+            assert r.status_code == 403, (s, r.status_code)
+
+    def test_repeated_query_params(self, keys):
+        d = S.get(f"{A}/console/audit", params=[("limit", "5"), ("limit", "7")])
+        r = ext("GET", "console/audit", keys["read"]["token"], params=[("limit", "5"), ("limit", "7")])
         assert r.status_code == d.status_code
 
 

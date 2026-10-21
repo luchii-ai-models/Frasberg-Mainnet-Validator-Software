@@ -46,6 +46,13 @@
 - Drift alerts: `ValidatorDrift_<id>` from 7d trends (drift→warning Slack, breach→critical PagerDuty+Slack), auto-resolve, re-notify on severity change, escalation capped at 3
 - New theme: light default + dark toggle (localStorage fras-theme, html[data-theme]), CSS vars in index.css, sidebar grouped Public / Operator, top bar with network status
 
+## Iteration 5 (2026-06)
+- Stat cards wrap instead of overflowing; Overview grids reflow (2 → 3 → 6 cols); word "Public" removed from UI (unlabelled main nav group; "Verification key" column)
+- Scoped API keys (apikeys.py): token `fk_live.<keyId>.<secret>`, Argon2id hash only, owner email, optional expiry, enable/disable, edit, rotate (old revoked), revoke, usage tracking + events log
+- Gateway `/api/ext/<any api path>` with `X-API-Key` or `Authorization: Bearer`: read=GET, write=+POST/PUT/DELETE, admin=+apikeys, alert config, Slack, per-validator routing writes; errors 401 API_KEY_MISSING/INVALID/DISABLED/REVOKED, 403 INSUFFICIENT_SCOPE
+- API Keys page at `/access-keys` (paths starting /api go to backend): create/reveal-once/copy/edit/toggle/rotate/revoke, live Verify (read/write/full probes, not counted as usage), curl quickstart
+- Key management endpoints under /api/console/apikeys are open (console has no login, by user choice)
+
 ## Notes / limitations
 - Mongo is standalone (no replica set): multi-doc transactions emulated via ordering + atomic single-doc ops
 - Event bus is SIMULATED in MongoDB; Ed25519 private keys stored in Mongo (demo — use KMS/HSM in production)
