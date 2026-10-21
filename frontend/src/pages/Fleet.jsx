@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { FleetTrends } from "@/components/FleetTrends";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dot, Field, PageHeader, Panel, Pill, Stat, statusTone, useLoad } from "@/components/kit";
@@ -53,10 +55,11 @@ export default function Fleet() {
   const [d, reload] = useLoad("/console/fleet");
   const [edit, setEdit] = useState(null);
   const [filter, setFilter] = useState("all");
+  const [removing, setRemoving] = useState(null);
   if (!d) return null;
   const s = d.summary;
   const rows = d.validators.filter((v) => filter === "all" || (filter === "issues" ? !v.delegationEligible : v.delegationEligible));
-  const remove = async (id) => { if (!window.confirm(`Deregister ${id}? This is recorded in the audit log.`)) return; if (await call("delete", `/console/fleet/${id}`, null, `${id} deregistered`)) reload(); };
+  const remove = async () => { const id = removing; setRemoving(null); if (await call("delete", `/console/fleet/${id}`, null, `${id} deregistered`)) reload(); };
   return (
     <div>
       <PageHeader kicker={`${s.total} validators${d.upcoming ? ` · next requirement epoch ${d.upcoming.epoch}` : ""}`} title="Validator Fleet">
@@ -73,6 +76,7 @@ export default function Fleet() {
         <Stat label={`Ready for epoch ${d.upcoming?.epoch ?? "—"}`} value={`${s.readyNext}/${s.total}`} tone={s.readyNext === s.total ? "ok" : "warn"} testId="fleet-ready-next" />
         <Stat label="Eligible stake" value={`${(s.stakeEligible / 1e6).toFixed(2)}M`} sub={`of ${(s.stakeTotal / 1e6).toFixed(2)}M FRAS`} testId="fleet-stake" />
       </div>
+      <FleetTrends />
       <Panel title="Side-by-side status" testId="fleet-table">
         <div className="overflow-x-auto scroll-thin">
           <Table>
@@ -99,7 +103,7 @@ export default function Fleet() {
                   <TableCell className="text-right whitespace-nowrap">
                     {!v.self && <>
                       <Button data-testid={`fleet-edit-${v.validatorId}`} size="sm" variant="secondary" onClick={() => setEdit(v)}>Edit</Button>
-                      <Button data-testid={`fleet-delete-${v.validatorId}`} size="sm" variant="ghost" className="text-[#FF3366]" onClick={() => remove(v.validatorId)}>Remove</Button>
+                      <Button data-testid={`fleet-delete-${v.validatorId}`} size="sm" variant="ghost" className="text-[#FF3366]" onClick={() => setRemoving(v.validatorId)}>Remove</Button>
                     </>}
                   </TableCell>
                 </TableRow>
@@ -108,6 +112,18 @@ export default function Fleet() {
           </Table>
         </div>
       </Panel>
+      <AlertDialog open={!!removing} onOpenChange={(o) => !o && setRemoving(null)}>
+        <AlertDialogContent className="bg-[#0F131D] border-[#1E2638]" data-testid="fleet-remove-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-heading">Deregister {removing}?</AlertDialogTitle>
+            <AlertDialogDescription>The validator leaves the fleet view and trends. This action is recorded in the audit log.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="fleet-remove-cancel">Cancel</AlertDialogCancel>
+            <AlertDialogAction data-testid="fleet-remove-confirm" className="bg-[#FF3366] hover:bg-[#FF3366]/80 text-white" onClick={remove}>Deregister</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {edit && <Editor value={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
     </div>
   );

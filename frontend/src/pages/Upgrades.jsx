@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { PageHeader, Panel, Pill, useLoad } from "@/components/kit";
+import { UpgradeNudges } from "@/components/UpgradeNudges";
 
 const PHASE = { scheduled: ["Scheduled", "muted"], announcement: ["30-day notice", "info"], upgrade_window: ["Upgrade window", "warn"], grace: ["Grace epoch", "violet"], enforced: ["Enforced", "ok"] };
 const COLOR = { announcement: "#00F0FF", upgrade_window: "#FFB300", grace: "#8B5CF6" };
@@ -71,6 +72,7 @@ export default function Upgrades() {
           );
         })}
       </div>
+      {upcoming.length > 0 && <UpgradeNudges epochs={upcoming.map((r) => r.epoch)} />}
       <Panel title="Enforced requirements" testId="upgrades-history">
         {past.map((r) => (
           <div key={r.epoch} className="flex flex-wrap justify-between gap-2 py-2 border-b border-[#1E2638] last:border-0 font-mono text-xs">

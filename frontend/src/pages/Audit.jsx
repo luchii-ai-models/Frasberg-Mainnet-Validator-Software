@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dot, Field, PageHeader, Panel, Pill, useLoad } from "@/components/kit";
 import { call, short } from "@/lib/api";
 import { ArchivePanel } from "@/components/ArchivePanel";
+import { ArchiveSchedule } from "@/components/ArchiveSchedule";
 
 export default function Audit() {
   const [d, reload] = useLoad("/console/audit?limit=200");
@@ -57,6 +58,7 @@ export default function Audit() {
         </Panel>
       </div>
       <ArchivePanel />
+      <ArchiveSchedule />
       <Panel title="Hash-Chained Records" testId="audit-records" right={<Pill tone="info">{d?.total || 0} records</Pill>}>
         <div className="max-h-[560px] overflow-auto scroll-thin">
           {(d?.records || []).map((r) => (

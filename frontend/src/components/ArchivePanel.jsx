@@ -12,14 +12,16 @@ export const ArchivePanel = () => {
   const fileRef = useRef(null);
   const shaRef = useRef(null);
 
-  const create = async () => { if (await call("post", "/console/audit/archives", toSeq ? { toSequence: Number(toSeq) } : {}, "Archive written (write-once)")) reload(); };
+  const create = async () => { await call("post", "/console/audit/archives", toSeq ? { toSequence: Number(toSeq) } : {}, "Archive written (write-once)"); setToSeq(""); reload(); };
   const verify = async (id) => { const r = await call("post", `/console/audit/archives/${id}/verify`); if (r) setResults((x) => ({ ...x, [id]: r })); };
   const verifyFile = async () => {
     const file = fileRef.current?.files?.[0];
     if (!file) return;
     const sumFile = shaRef.current?.files?.[0];
     const sha = sumFile ? (await sumFile.text()).trim() : undefined;
-    setUpload(await call("post", "/console/audit/archives/verify-upload", { content: await file.text(), sha256: sha }));
+    const r = await call("post", "/console/audit/archives/verify-upload", { content: await file.text(), sha256: sha });
+    setUpload(r);
+    if (!r || !r.valid) { fileRef.current.value = ""; if (shaRef.current) shaRef.current.value = ""; }
   };
 
   return (

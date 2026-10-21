@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 import uuid
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
@@ -73,6 +73,22 @@ class AlertConfig(BaseModel):
     slackWebhookUrl: Optional[str] = None
     pagerdutyRoutingKey: Optional[str] = None
     autoDispatch: Optional[bool] = None
+    quietEnabled: Optional[bool] = None
+    quietStart: Optional[str] = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    quietEnd: Optional[str] = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    quietMode: Optional[str] = Field(None, pattern=r"^(digest|suppress)$")
+    escalationMinutes: Optional[int] = Field(None, ge=0, le=1440)
+
+
+QUIET_DEFAULTS = {"quietEnabled": False, "quietStart": "22:00", "quietEnd": "07:00", "quietMode": "digest", "escalationMinutes": 15}
+
+
+def in_quiet(cfg, t):
+    if not cfg["quietEnabled"]:
+        return False
+    m = t.hour * 60 + t.minute
+    a, b = (int(x[:2]) * 60 + int(x[3:]) for x in (cfg["quietStart"], cfg["quietEnd"]))
+    return a <= m < b if a <= b else (m >= a or m < b)
 
 
 def route_alert(alert):
@@ -243,7 +259,25 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
     # ---------- live alert delivery ----------
     async def get_config():
         c = await db.settings.find_one({"_id": "alerting"}) or {}
-        return {"slackWebhookUrl": c.get("slackWebhookUrl"), "pagerdutyRoutingKey": c.get("pagerdutyRoutingKey"), "autoDispatch": c.get("autoDispatch", True)}
+        return {"slackWebhookUrl": c.get("slackWebhookUrl"), "pagerdutyRoutingKey": c.get("pagerdutyRoutingKey"), "autoDispatch": c.get("autoDispatch", True),
+                "slackChannel": c.get("slackChannel"), **{k: c.get(k, v) for k, v in QUIET_DEFAULTS.items()}}
+
+    async def log_delivery(alert, status, receiver, channel, result, detail, summary, test=False):
+        doc = {"id": str(uuid.uuid4()), "alert": alert["name"], "status": status, "severity": alert["severity"], "service": alert["service"],
+               "receiver": receiver, "channel": channel, "result": result, "detail": detail, "summary": summary, "test": test, "sentAt": iso()}
+        await deliveries.insert_one(dict(doc))
+        await store.inc("alert_notifications_total", labels={"result": result, "status": status})
+        return doc
+
+    async def post_slack(cfg, text):
+        if not cfg["slackWebhookUrl"]:
+            return "dry_run", "no destination configured"
+        try:
+            async with httpx.AsyncClient(timeout=8) as http:
+                r = await http.post(cfg["slackWebhookUrl"], json={"text": text})
+            return ("delivered" if r.status_code < 300 else "failed"), f"HTTP {r.status_code}"
+        except httpx.HTTPError as e:
+            return "failed", type(e).__name__
 
     async def deliver(alert, status, receiver, channel, cfg, test=False):
         summary = f"[{status.upper()}] {alert['name']} ({alert['severity']}) service={alert['service']} value={alert.get('value')}"
@@ -252,21 +286,45 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
             async with httpx.AsyncClient(timeout=8) as http:
                 if channel == "pagerduty" and cfg["pagerdutyRoutingKey"]:
                     r = await http.post("https://events.pagerduty.com/v2/enqueue", json={
-                        "routing_key": cfg["pagerdutyRoutingKey"], "event_action": "trigger" if status == "firing" else "resolve",
+                        "routing_key": cfg["pagerdutyRoutingKey"], "event_action": "resolve" if status == "resolved" else "trigger",
                         "dedup_key": f"frasberg-{alert['name']}", "payload": {"summary": summary, "source": "fras_val_001",
                                                                              "severity": "critical" if alert["severity"] == "critical" else "warning",
                                                                              "custom_details": alert}})
                     result, detail = ("delivered" if r.status_code < 300 else "failed"), f"HTTP {r.status_code}"
-                elif channel == "slack" and cfg["slackWebhookUrl"]:
-                    r = await http.post(cfg["slackWebhookUrl"], json={"text": f":rotating_light: {summary}\nrunbook: https://runbooks.frasberg.com/{alert['name']}"})
-                    result, detail = ("delivered" if r.status_code < 300 else "failed"), f"HTTP {r.status_code}"
         except httpx.HTTPError as e:
             result, detail = "failed", type(e).__name__
-        doc = {"id": str(uuid.uuid4()), "alert": alert["name"], "status": status, "severity": alert["severity"], "service": alert["service"],
-               "receiver": receiver, "channel": channel, "result": result, "detail": detail, "summary": summary, "test": test, "sentAt": iso()}
-        await deliveries.insert_one(dict(doc))
-        await store.inc("alert_notifications_total", labels={"result": result, "status": status})
-        return doc
+        if channel == "slack":
+            result, detail = await post_slack(cfg, f":rotating_light: {summary}\nrunbook: https://runbooks.frasberg.com/{alert['name']}")
+        return await log_delivery(alert, status, receiver, channel, result, detail, summary, test)
+
+    async def flush_digest(cfg):
+        items = await db.alert_digest.find({"sentAt": None}).sort("queuedAt", 1).to_list(None)
+        if not items:
+            return None
+        lines = [f"• {i['queuedAt'][11:16]} [{i['status'].upper()}] {i['alert']} ({i['severity']}) service={i['service']}" for i in items]
+        text = f":crescent_moon: Frasberg quiet-hours digest — {len(items)} notification(s)\n" + "\n".join(lines)
+        result, detail = await post_slack(cfg, text)
+        await db.alert_digest.update_many({"_id": {"$in": [i["_id"] for i in items]}}, {"$set": {"sentAt": iso()}})
+        return await log_delivery({"name": "QuietHoursDigest", "severity": "warning", "service": "alerting"}, "digest", "slack-platform", "slack",
+                                  result, detail, f"[DIGEST] {len(items)} batched notification(s)")
+
+    async def escalate(cfg, firing):
+        mins = cfg["escalationMinutes"]
+        if not mins:
+            return []
+        out, t = [], now()
+        for a in firing:
+            if a["severity"] != "critical":
+                continue
+            st = await alert_state.find_one({"_id": a["name"]})
+            if not st or not st.get("notified") or st.get("acknowledged") or not st.get("lastPagedAt"):
+                continue
+            if t - datetime.fromisoformat(st["lastPagedAt"].replace("Z", "+00:00")) < timedelta(minutes=mins):
+                continue
+            await alert_state.update_one({"_id": a["name"]}, {"$set": {"lastPagedAt": iso()}, "$inc": {"escalations": 1}})
+            receiver, channel = route_alert(a)
+            out.append(await deliver(a, "escalation", receiver, channel, cfg))
+        return out
 
     async def dispatch():
         cfg = await get_config()
@@ -280,13 +338,28 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
             if a["firing"] == prev["firing"]:
                 continue
             notify = (not inhibited_by) if a["firing"] else prev.get("notified", False)
-            await alert_state.update_one({"_id": a["name"]}, {"$set": {"firing": a["firing"], "since": iso(), "inhibitedBy": inhibited_by,
-                                                                    "notified": a["firing"] and notify}}, upsert=True)
-            if not notify:
-                continue
+            status = "firing" if a["firing"] else "resolved"
             receiver, channel = route_alert(a)
-            sent.append(await deliver(a, "firing" if a["firing"] else "resolved", receiver, channel, cfg))
-        return {"evaluated": len(alerts), "firing": len(firing), "notifications": sent}
+            held = notify and a["severity"] != "critical" and in_quiet(cfg, now())
+            if held:
+                summary = f"[{status.upper()}] {a['name']} ({a['severity']}) service={a['service']} value={a.get('value')}"
+                if cfg["quietMode"] == "digest":
+                    await db.alert_digest.insert_one({"alert": a["name"], "status": status, "severity": a["severity"], "service": a["service"], "queuedAt": iso(), "sentAt": None})
+                    sent.append(await log_delivery(a, status, receiver, channel, "queued", "quiet hours · digest at window end", summary))
+                else:
+                    sent.append(await log_delivery(a, status, receiver, channel, "suppressed", "quiet hours", summary))
+                notify = notify and cfg["quietMode"] == "digest"
+            await alert_state.update_one({"_id": a["name"]}, {"$set": {"firing": a["firing"], "since": iso(), "inhibitedBy": inhibited_by,
+                                                                    "notified": a["firing"] and notify, "acknowledged": False,
+                                                                    "lastPagedAt": iso() if a["firing"] and notify else None}}, upsert=True)
+            if notify and not held:
+                sent.append(await deliver(a, status, receiver, channel, cfg))
+        sent += await escalate(cfg, firing)
+        if not in_quiet(cfg, now()):
+            d = await flush_digest(cfg)
+            if d:
+                sent.append(d)
+        return {"evaluated": len(alerts), "firing": len(firing), "notifications": sent, "quiet": in_quiet(cfg, now())}
 
     @api.get("/console/alerts")
     async def alerts_state():
@@ -296,11 +369,26 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
         for a in m["alerts"]:
             receiver, channel = route_alert(a)
             st = states.get(a["name"], {})
-            rows.append({**a, "receiver": receiver, "channel": channel, "since": st.get("since"), "inhibitedBy": st.get("inhibitedBy")})
+            rows.append({**a, "receiver": receiver, "channel": channel, "since": st.get("since"), "inhibitedBy": st.get("inhibitedBy"),
+                         "acknowledged": st.get("acknowledged", False), "escalations": st.get("escalations", 0), "notified": st.get("notified", False)})
         cfg = await get_config()
         log = await deliveries.find({}, {"_id": 0}).sort("sentAt", -1).limit(50).to_list(None)
-        return {"alerts": rows, "deliveries": log, "config": {"slackConfigured": bool(cfg["slackWebhookUrl"]), "pagerdutyConfigured": bool(cfg["pagerdutyRoutingKey"]),
-                                                              "autoDispatch": cfg["autoDispatch"]}}
+        pending = await db.alert_digest.count_documents({"sentAt": None})
+        return {"alerts": rows, "deliveries": log, "digestPending": pending, "quietActive": in_quiet(cfg, now()),
+                "config": {"slackConfigured": bool(cfg["slackWebhookUrl"]), "slackChannel": cfg["slackChannel"], "pagerdutyConfigured": bool(cfg["pagerdutyRoutingKey"]),
+                           "autoDispatch": cfg["autoDispatch"], **{k: cfg[k] for k in QUIET_DEFAULTS}}}
+
+    @api.post("/console/alerts/{name}/ack")
+    async def alerts_ack(name: str):
+        res = await alert_state.update_one({"_id": name, "firing": True}, {"$set": {"acknowledged": True, "acknowledgedAt": iso()}})
+        if res.matched_count != 1:
+            raise FrasError("INVALID_STATE", "Alert is not firing")
+        await store.append_audit("ALERT_ACKNOWLEDGED", "operator", metadata={"alert": name})
+        return {"acknowledged": name}
+
+    @api.post("/console/alerts/digest/flush")
+    async def alerts_digest_flush():
+        return {"notification": await flush_digest(await get_config())}
 
     @api.put("/console/alerts/config")
     async def alerts_config(body: AlertConfig):
@@ -310,6 +398,8 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
         for k in ("slackWebhookUrl", "pagerdutyRoutingKey"):
             if k in upd and upd[k] == "":
                 upd[k] = None
+        if upd.get("slackWebhookUrl", 1) is None:
+            upd["slackChannel"] = None
         await db.settings.update_one({"_id": "alerting"}, {"$set": upd}, upsert=True)
         return (await alerts_state())["config"]
 
@@ -379,4 +469,4 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
         await epoch_clock()
         asyncio.create_task(loop())
 
-    return seed
+    return seed, {"get_config": get_config, "post_slack": post_slack, "archive_create": archive_create, "upgrades": upgrades}
