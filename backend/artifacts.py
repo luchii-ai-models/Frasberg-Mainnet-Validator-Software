@@ -12,7 +12,7 @@ GRAFANA_DASHBOARD = {
     "templating": {"list": [{"name": n, "type": "query"} for n in ("network", "validator", "environment", "service")]},
     "panels": [
         _p("Lock Availability", "stat", "lock_availability"),
-        _p("Lock Contention %", "timeseries", "100 * rate(rotation_lock_acquire_failed_total[5m]) / (rate(rotation_lock_acquired_total[5m]) + rate(rotation_lock_acquire_failed_total[5m]))"),
+        _p("Lock Contention %", "timeseries", "100 * rate(rotation_lock_denied_total[5m]) / (rate(rotation_lock_acquired_total[5m]) + rate(rotation_lock_denied_total[5m]))"),
         _p("Outbox Pending", "stat", "audit_outbox_pending_total"),
         _p("Dead Letter Queue", "stat", "audit_outbox_dead_letter_total"),
         _p("Outbox Publish Failures", "timeseries", "rate(audit_outbox_publish_failures_total[5m])"),
@@ -56,7 +56,7 @@ PROMETHEUS_RULES = f"""groups:
     labels: {{severity: warning, service: validator-lock, team: platform, budget: availability}}
     annotations: {{summary: 3x burn - budget gone in ~10 days, runbook: "{RUNBOOK}/error-budget"}}
   - alert: LockContentionRateHigh
-    expr: rate(rotation_lock_acquire_failed_total[5m]) / rate(rotation_lock_acquired_total[5m]) > 0.01
+    expr: rate(rotation_lock_denied_total[5m]) / (rate(rotation_lock_acquired_total[5m]) + rate(rotation_lock_denied_total[5m])) > 0.01
     for: 10m
     labels: {{severity: warning, service: validator-lock, team: platform, slo: lock-availability}}
     annotations: {{summary: Validator lock contention exceeded SLO, runbook: "{RUNBOOK}/validator-lock-contention"}}

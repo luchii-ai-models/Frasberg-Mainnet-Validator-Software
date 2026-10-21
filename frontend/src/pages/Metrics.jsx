@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { Check, Dot, Json, PageHeader, Panel, Pill, Stat, useLoad } from "@/components/kit";
-import { API, pct } from "@/lib/api";
+import { API, call, pct } from "@/lib/api";
 
 const SLOS = [["Validator Lock", "99.95%"], ["Audit Pipeline", "99.99%"], ["Policy Verification", "99.99%"], ["Outbox Publisher", "99.99%"], ["Validator Compliance", "99.95%"]];
 
 export default function Metrics() {
-  const [m] = useLoad("/console/metrics");
+  const [m, reload] = useLoad("/console/metrics");
   const [a] = useLoad("/console/artifacts");
   const [tab, setTab] = useState("grafana");
   if (!m) return null;
@@ -21,7 +22,11 @@ export default function Metrics() {
     <div>
       <PageHeader kicker="low-cardinality · multi-window burn rate" title="Metrics & SLO">
         <a href={`${API}/metrics`} target="_blank" rel="noreferrer" data-testid="prometheus-link"><Pill tone="info">/api/metrics (prometheus)</Pill></a>
+        <Button data-testid="reset-slo-window-button" size="sm" variant="secondary" onClick={async () => { await call("post", "/console/metrics/reset-window", null, "SLO window reset (audited)"); reload(); }}>Reset SLO window</Button>
       </PageHeader>
+      <div className="font-mono text-[11px] text-slate-500 -mt-4 mb-6" data-testid="slo-window-info">
+        contention window 5m: {m.window5m.acquired} acquired / {m.window5m.denied} denied · availability window 1h: {m.window1h.acquired} ok / {m.window1h.error} backend errors · lifetime denied {m.lockDenied}
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
         <Stat label="Lock availability" value={pct(m.lockAvailability, 3)} tone={m.lockAvailability >= 0.9995 ? "ok" : "bad"} sub="SLO 99.95%" testId="metric-lock-availability" />
         <Stat label="Contention" value={pct(m.contentionRate)} tone={m.contentionRate < 0.01 ? "ok" : "warn"} sub="SLO < 1%" testId="metric-contention" />

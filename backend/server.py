@@ -287,6 +287,10 @@ async def keys_rollback(body: RotateBody):
 
 @api.post("/console/keys/{key_id}/revoke")
 async def keys_revoke(key_id: str):
+    await guard_writes()
+    key = await store.get_key(key_id)
+    if key and key["status"] == "active":
+        raise FrasError("INVALID_STATE", "Rotate to a new key before revoking the active signing key")
     return await store.revoke_key(key_id)
 
 
@@ -460,16 +464,20 @@ async def locks_expire(body: LockBody):
 async def metric_snapshot():
     c = store.counter
     acq, failed = await c("rotation_lock_acquired_total"), await c("rotation_lock_acquire_failed_total")
+    w5, w1h = await store.lock_window(300), await store.lock_window(3600)
     attempts, success = await c("audit_outbox_publish_attempts_total"), await c("audit_outbox_publish_success_total")
-    availability = acq / (acq + failed) if acq + failed else 1.0
-    error_rate = 1 - availability
-    burn = error_rate / 0.0005
+    avail_den = w1h["acquired"] + w1h["error"]
+    availability = w1h["acquired"] / avail_den if avail_den else 1.0
+    burn = (1 - availability) / 0.0005
+    cont_den = w5["acquired"] + w5["denied"]
+    contention = w5["denied"] / cont_den if cont_den else 0.0
     cp, cf = await c("chaos_test_pass_total"), await c("chaos_test_fail_total")
     locks = await store.list_locks()
     pending = await store.outbox.count_documents({"published_at": None})
     out = {
         "lockAcquired": acq, "lockDenied": await c("rotation_lock_denied_total"), "lockFailed": failed,
-        "contentionRate": failed / (acq + failed) if acq + failed else 0, "lockAvailability": availability,
+        "window5m": w5, "window1h": w1h,
+        "contentionRate": contention, "lockAvailability": availability,
         "burnRate": burn, "burnLevel": "critical" if burn >= 14.4 else "high" if burn >= 6 else "warning" if burn >= 3 else "healthy",
         "errorBudgetRemaining": max(0.0, 1 - (0.9995 - availability) / 0.0005) if availability < 0.9995 else 1.0,
         "staleFence": await c("rotation_lock_stale_fence_total"), "staleRelease": await c("rotation_lock_stale_release_total"),
@@ -485,11 +493,18 @@ async def metric_snapshot():
         "audit_outbox_pending_total": pending, "rotation_lock_active_total": sum(1 for l in locks if l["active"]),
     }
     out["alerts"] = [{"name": n, "firing": core.alert_fires(n, val), "severity": core.ALERT_THRESHOLDS[n][2], "service": core.ALERT_THRESHOLDS[n][3], "value": val}
-                     for n, val in [("LockAvailabilityLow", availability if acq + failed else None), ("OutboxBacklog", pending),
-                                    ("ErrorBudgetFastBurn", burn if acq + failed else None), ("StaleFenceDetected", out["staleFence"]),
+                     for n, val in [("LockAvailabilityLow", availability if avail_den else None), ("OutboxBacklog", pending),
+                                    ("ErrorBudgetFastBurn", burn if avail_den else None), ("StaleFenceDetected", out["staleFence"]),
                                     ("AuditDeadLetterGrowth", out["deadLetterCurrent"]), ("ReplayFailures", out["replayFailures"]),
-                                    ("LockContentionRateHigh", out["contentionRate"] if acq + failed else None), ("ChaosFailure", cf)]]
+                                    ("LockContentionRateHigh", contention if cont_den else None), ("ChaosFailure", cf)]]
     return out
+
+
+@api.post("/console/metrics/reset-window")
+async def metrics_reset_window():
+    removed = (await store.lock_samples.delete_many({})).deleted_count
+    await store.append_audit("SLO_WINDOW_RESET", "validator-ops", metadata={"samplesCleared": removed})
+    return {"samplesCleared": removed}
 
 
 @api.get("/console/metrics")

@@ -53,8 +53,16 @@ class Store:
         self.metrics, self.bus, self.consumer = c("metrics"), c("event_bus"), c("consumer_processed")
         self.policies, self.rollbacks, self.validator = c("signed_policies"), c("rollback_requests"), c("validator")
         self.schedule, self.settings, self.test_runs = c("required_versions"), c("settings"), c("test_runs")
+        self.lock_samples = c("lock_samples")
         self.all = [self.audit, self.outbox, self.dead, self.keys, self.locks, self.counters, self.metrics, self.bus,
-                    self.consumer, self.policies, self.rollbacks, self.validator, self.schedule, self.settings]
+                    self.consumer, self.policies, self.rollbacks, self.validator, self.schedule, self.settings, self.lock_samples]
+
+    async def lock_window(self, seconds):
+        since = now() - timedelta(seconds=seconds)
+        out = {"acquired": 0, "denied": 0, "error": 0}
+        async for g in self.lock_samples.aggregate([{"$match": {"ts": {"$gte": since}}}, {"$group": {"_id": "$result", "n": {"$sum": 1}}}]):
+            out[g["_id"]] = g["n"]
+        return out
 
     async def ensure_indexes(self):
         await self.audit.create_index([("sequence", ASCENDING)], unique=True)
@@ -67,6 +75,7 @@ class Store:
         await self.keys.create_index("key_id", unique=True)
         await self.rollbacks.create_index("rollback_id", unique=True)
         await self.schedule.create_index("epoch", unique=True)
+        await self.lock_samples.create_index("ts", expireAfterSeconds=7200)
 
     async def reset(self):
         """Self-test namespace only: clears isolated selftest_ collections."""
@@ -150,8 +159,13 @@ class Store:
                 upsert=True)
         except DuplicateKeyError:
             await self.inc("rotation_lock_denied_total")
-            await self.inc("rotation_lock_acquire_failed_total")
+            await self.lock_samples.insert_one({"ts": t, "result": "denied"})
             raise FrasError("ROTATION_IN_PROGRESS")
+        except Exception:
+            await self.inc("rotation_lock_acquire_failed_total")
+            await self.lock_samples.insert_one({"ts": t, "result": "error"})
+            raise
+        await self.lock_samples.insert_one({"ts": t, "result": "acquired"})
         if prior and aware(prior["expires_at"]) < t:
             await self.inc("rotation_lock_expired_total")
         await self.inc("rotation_lock_acquired_total")
@@ -387,7 +401,7 @@ class Store:
             await self.bus_publish(ev, mode)
         except PublisherCrash:
             return "crashed"
-        except asyncio.TimeoutError as e:
+        except asyncio.TimeoutError:
             return await self._handle_failure(ev, "EVENT_BUS_TIMEOUT", keep_claim=True) and "timeout"
         except Exception as e:
             return await self._handle_failure(ev, e)
