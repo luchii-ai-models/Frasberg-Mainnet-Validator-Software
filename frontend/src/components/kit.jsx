@@ -79,7 +79,7 @@ export const Panel = ({ title, right, children, className = "", testId }) => (
 export const Stat = ({ label, value, tone, sub, testId }) => (
   <div className="panel p-5 rise min-w-0 overflow-hidden" data-testid={testId}>
     <div className="text-xs font-medium text-[var(--text-muted)] truncate">{label}</div>
-    <div title={typeof value === "string" ? value : undefined} className="font-heading text-xl sm:text-2xl font-bold tracking-tight leading-tight mt-2 truncate" style={{ color: tone ? COLORS[tone] : "var(--text)" }}>{value}</div>
+    <div title={typeof value === "string" ? value : undefined} className="font-heading text-xl sm:text-2xl font-bold tracking-tight leading-tight mt-2 break-words" style={{ color: tone ? COLORS[tone] : "var(--text)" }}>{value}</div>
     {sub && <div className="text-xs text-[var(--text-muted)] mt-1">{sub}</div>}
   </div>
 );

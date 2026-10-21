@@ -1,4 +1,5 @@
 """Scoped API keys (read / write / admin) and the /api/ext gateway that enforces them for every API endpoint."""
+import re
 import secrets
 from datetime import datetime, timedelta
 from typing import Literal, Optional
@@ -14,6 +15,7 @@ from store import iso, now
 
 ph = PasswordHasher()
 PREFIX = "fk_live"
+PROBE_TOKEN = secrets.token_urlsafe(24)
 RANK = {"read": 1, "write": 2, "admin": 3}
 EMAIL = r"^$|^[^@\s]+@[^@\s]+\.[^@\s]+$"
 ADMIN_PATHS = ("console/apikeys", "console/alerts/config", "console/slack/", "console/settings")
@@ -38,7 +40,7 @@ class VerifyBody(BaseModel):
 
 
 def required_scope(method, path):
-    if path.startswith(ADMIN_PATHS) or (path.startswith("console/fleet/") and "/routing" in path):
+    if path.startswith(ADMIN_PATHS) or re.match(r"^console/fleet/[^/]+/routing", path):
         return "admin"
     return "read" if method in ("GET", "HEAD", "OPTIONS") else "write"
 
@@ -85,29 +87,34 @@ def register(api, app, store, db):
             raise FrasError("API_KEY_REVOKED", "API key has expired.")
         return doc
 
-    async def record(doc, method, path, status):
+    async def record(doc, method, path, status, probe=False):
+        if probe:
+            return
         await keys.update_one({"keyId": doc["keyId"]}, {"$set": {"lastUsedAt": iso(), "lastUsedPath": f"{method} /{path}"}, "$inc": {"useCount": 1}})
         await events.insert_one({"keyId": doc["keyId"], "name": doc["name"], "method": method, "path": f"/{path}", "status": status, "at": iso()})
 
     # ---------- gateway: /api/ext/<any api path> ----------
     @api.api_route("/ext/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
     async def gateway(path: str, request: Request):
-        raw = request.headers.get("x-api-key") or request.headers.get("authorization", "").removeprefix("Bearer ").strip() or None
+        auth = request.headers.get("authorization", "")
+        raw = request.headers.get("x-api-key") or (auth[7:].strip() if auth[:7].lower() == "bearer " else "") or None
+        probe = secrets.compare_digest(request.headers.get("x-fras-probe", ""), PROBE_TOKEN)
         doc = await authenticate(raw)
         path = path.lstrip("/")
         need = required_scope(request.method, path)
         if RANK[doc["scope"]] < RANK[need]:
-            await record(doc, request.method, path, 403)
+            await record(doc, request.method, path, 403, probe)
             raise FrasError("INSUFFICIENT_SCOPE", f"'{doc['scope']}' key cannot {request.method} /{path} (needs {need})")
         if path.startswith("_probe/"):
-            await record(doc, request.method, path, 200)
+            await record(doc, request.method, path, 200, probe)
             return {"ok": True, "scope": doc["scope"], "required": need, "keyId": doc["keyId"]}
         if path.startswith("ext/"):
             raise FrasError("INVALID_STATE", "Nested gateway calls are not allowed")
-        fwd = {k: v for k, v in request.headers.items() if k.lower() in ("content-type", "accept", "x-request-id")}
+        fwd = {k: v for k, v in request.headers.items() if k.lower() in ("content-type", "accept", "x-request-id", "x-forwarded-host", "x-forwarded-proto", "x-forwarded-for")}
+        fwd.setdefault("x-forwarded-host", request.headers.get("host", ""))
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://gateway", timeout=60) as c:
-            r = await c.request(request.method, f"/api/{path}", params=dict(request.query_params), content=await request.body(), headers=fwd)
-        await record(doc, request.method, path, r.status_code)
+            r = await c.request(request.method, f"/api/{path}", params=request.query_params.multi_items(), content=await request.body(), headers=fwd)
+        await record(doc, request.method, path, r.status_code, probe)
         out = {k: v for k, v in r.headers.items() if k.lower() in ("content-type", "content-disposition", "x-checksum-sha256", "x-request-id")}
         out.update({"X-API-Key-Id": doc["keyId"], "X-API-Scope": doc["scope"]})
         return Response(content=r.content, status_code=r.status_code, headers=out)
@@ -172,7 +179,7 @@ def register(api, app, store, db):
         out = []
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://gateway", timeout=30) as c:
             for level, method, p in probes:
-                r = await c.request(method, f"/api/ext/{p}", headers={"X-API-Key": body.key.strip()})
+                r = await c.request(method, f"/api/ext/{p}", headers={"X-API-Key": body.key.strip(), "X-Fras-Probe": PROBE_TOKEN})
                 err = r.json().get("error", {}) if r.status_code >= 400 else {}
                 out.append({"level": level, "request": f"{method} /api/ext/{p}", "allowed": r.status_code < 400, "status": r.status_code, "code": err.get("code")})
         key = None

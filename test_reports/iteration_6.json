@@ -1,0 +1,44 @@
+{
+  "summary": "Tested the API key gateway and key management end to end (59 pytest tests, 58 pass) and the API Keys page UI, plus the two reported bugs. Gateway checks: 31 GET endpoints were called with read, write and admin keys, and each status code matched the direct /api call (sampled bodies were identical). Read keys get 403 INSUFFICIENT_SCOPE on writes. Write keys get 403 on admin paths. Admin keys can do everything. Missing, malformed, wrong-secret, disabled, revoked and rotated-away keys all return the correct 401 codes. X-API-Key-Id and X-API-Scope headers are present. Archive NDJSON and checksum downloads keep content-disposition through the gateway. Bearer auth works. Path traversal attempts (.., %2e%2e, %2F, //) are still blocked. Fleet create/update/delete and the archive-schedule PUT work through write and admin keys. Key management checks: create validation (empty name, bad scope, bad email, expiry 0 or 4000) returns 422. Token appears only on create/rotate and tokenHash is never returned. Edit, disable/enable, revoke, rotate (old key gets rotatedTo, new key keeps scope and expiry) and verify all work. Usage counters and the events log update. UI: the full API Keys flow passed. Validation toasts, token reveal, copy to clipboard (checked against the real clipboard), masked display, verify panel, edit, toggle, copy ID, snippet copy, rotate with cancel/ok, revoke, show-revoked and the events panel all work. Bug 'Public': the word appears in none of the 15 pages (body text plus title/placeholder/aria-label). Sidebar groups are an unlabelled main group plus OPERATOR, and the Keys column now reads 'Verification key'. Bug stat card: no value overflows its card at any width or theme on Overview, Fleet, Alerts or API Keys. However, at 768px the Overview Compliance value is cut to 'COMPLI…' in both themes. Regression: theme toggle works and all 15 pages load. At the end all keys were revoked (21 keys, all revoked) and Slack is still configured. I sent no Slack messages.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/ext/console/slack/oauth/start", "issue": "Returns 409 INVALID_STATE through the gateway with an admin key, while the direct call returns 200 for the same origin. Cause: the gateway forwards only content-type, accept and x-request-id, so the internal ASGI request has Host 'gateway' and no x-forwarded-host, and the origin/host check fails. Fix: forward x-forwarded-host/host (and x-forwarded-proto) in the gateway's fwd headers."},
+      {"endpoint": "GET /api/ext/console/fleet/routing", "issue": "required_scope treats any 'console/fleet/' path containing '/routing' as admin, so read and write keys get 403 on the read-only routing list GET. The spec only lists console/fleet/{id}/routing* as admin. Decide whether this is intended; if not, exclude the exact path 'console/fleet/routing' for GET."},
+      {"endpoint": "/api/ext/*", "issue": "'Authorization: bearer <key>' (lowercase scheme) returns 401 API_KEY_MISSING/INVALID because removeprefix('Bearer ') is case-sensitive. The auth scheme should be matched case-insensitively."},
+      {"endpoint": "POST /api/console/apikeys/verify", "issue": "The verify probes count as real usage: useCount goes up by 3 and lastUsedPath/events show the probe calls (for example 'GET /console/apikeys 403'). This hides the key's real last use. Consider not recording probe calls, or marking them."},
+      {"endpoint": "/api/ext/*", "issue": "dict(request.query_params) drops repeated query parameters. Use request.query_params.multi_items()."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Overview Stat (Compliance)", "issue": "At 768px width (tablet, sidebar visible, 3-column stat grid with 144px cards) the value 'COMPLIANT' is truncated to 'COMPLI…' in both themes. It no longer overflows, but it is not fully readable. Longer codes such as VERSION_TOO_OLD will be cut even more. Fix: use a smaller font for long values (for example text-lg at md), or 2 columns at md, or break-words instead of truncate.", "selector": "[data-testid='stat-compliance-code']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Overview at 1024px", "issues": ["The Health Requirements, Delegation Criteria and Enforcement panels are too narrow in the 3-column layout, so the right-hand values are cut: '99.9…', 'p…', 'enab…', 'no…', 'not act…'. Switch these panels to 1 or 2 columns below xl."]},
+      {"screen": "API Keys", "issues": ["When only revoked keys exist, the list shows 'No keys yet. Create one…', which is misleading. Say something like 'No active keys (N revoked)' instead.", "The quickstart write snippet uses POST /console/alerts/dispatch, which posts to the user's real Slack. A side-effect-free example (for example PUT /console/audit/archive-schedule) would be safer."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_apikeys_gateway.py", "/app/test_reports/pytest/apikeys_gateway.xml"],
+  "action_items": [
+    "Make the Overview stat value fully readable at 768px (Compliance shows 'COMPLI…')",
+    "Forward host/x-forwarded-host/x-forwarded-proto in the /api/ext gateway so slack/oauth/start works through it",
+    "Decide the scope for GET /console/fleet/routing (currently admin-only through the gateway)",
+    "Match the Bearer scheme case-insensitively; keep repeated query params in the gateway",
+    "Optional: do not count verify probes in usage; fix the empty-state text when only revoked keys exist; fix the cut values in the Overview panels at 1024px"
+  ],
+  "critical_code_review_comments": [
+    "apikeys.py gateway: fwd headers omit host/x-forwarded-*, so any endpoint that depends on the request host behaves differently through the gateway (slack oauth start)",
+    "required_scope: matching 'console/fleet/' plus '/routing' also catches the GET /console/fleet/routing list",
+    "api_key_events grows without limit (one insert per call, no TTL index). Add a TTL or cap the collection",
+    "Each gateway call runs one argon2 verify (about 50–100 ms of CPU) with no caching or rate limiting. High-frequency clients may load the backend; consider a short in-memory cache of verified token hashes",
+    "There is no rate limit or brute-force protection on /api/ext or /api/console/apikeys/verify. Also, the console (including key management) is open with no login by user choice, so anyone with the URL can mint admin keys. Flag this to the user as an accepted risk"
+  ],
+  "updated_files": ["/app/backend/tests/test_apikeys_gateway.py"],
+  "success_rate": {"backend": "98% (58/59; the 1 failure is slack oauth start through the gateway)", "frontend": "95% (all API Keys flows and the 'Public' removal pass; the 768px stat truncation remains)"},
+  "seed_data_creation": "Test keys were created and all revoked. GET /console/apikeys now lists 21 keys, all revoked. A temporary fleet validator test_gw_val was created and deleted. fras_val_003 routing was set and then deleted (the doc was removed). The archive-schedule was PUT with its existing values.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run with: REACT_APP_BACKEND_URL=<url> pytest /app/backend/tests/test_apikeys_gateway.py -n0 -p no:cacheprovider. It sends no Slack messages. INVALID_STATE maps to 409. The fixture revokes the keys it creates. test_slack_oauth_start_via_gateway fails until the gateway forwards host headers. The UI route is /access-keys. The theme toggle class is not on documentElement, but the toggle visibly switches the theme."
+}

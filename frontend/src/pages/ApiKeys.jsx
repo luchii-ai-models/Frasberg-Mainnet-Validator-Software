@@ -65,7 +65,7 @@ function VerifyPanel() {
 
 function Quickstart({ base }) {
   const read = `curl -H "X-API-Key: $FRAS_KEY" ${base}/v1/validator/status`;
-  const write = `curl -X POST -H "X-API-Key: $FRAS_KEY" ${base}/console/alerts/dispatch`;
+  const write = `curl -X PUT -H "X-API-Key: $FRAS_KEY" -H "Content-Type: application/json" -d '{"enabled":true}' ${base}/console/audit/archive-schedule`;
   return (
     <Panel title="How to call the API" testId="apikey-quickstart">
       <p className="text-sm text-[var(--text-2)] mb-4">Every endpoint is available under <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-[var(--surface-2)]">{base}</code>. Send the key in the <code className="font-mono text-xs">X-API-Key</code> header (or <code className="font-mono text-xs">Authorization: Bearer</code>).</p>
@@ -110,7 +110,7 @@ export default function ApiKeys() {
       </div>
       <Panel title="Keys" testId="apikey-list" className="mb-6"
         right={<label className="flex items-center gap-2 text-xs text-[var(--text-2)]"><Switch data-testid="apikey-show-revoked" checked={showRevoked} onCheckedChange={setShowRevoked} />show revoked</label>}>
-        {rows.length === 0 && <div className="text-sm text-[var(--text-muted)] py-6 text-center" data-testid="apikey-empty">No keys yet. Create one to call the API from your apps.</div>}
+        {rows.length === 0 && <div className="text-sm text-[var(--text-muted)] py-6 text-center" data-testid="apikey-empty">{d.keys.length ? `No active keys (${d.keys.length} revoked). Create a new one to call the API.` : "No keys yet. Create one to call the API from your apps."}</div>}
         {rows.map((k) => <KeyRow key={k.keyId} k={k} onEdit={setEdit} onToggle={toggle} onAction={(key, action) => setConfirm({ k: key, action })} />)}
       </Panel>
       <div className="grid lg:grid-cols-2 gap-6 mb-6">

@@ -68,7 +68,7 @@ export default function Overview() {
         <Pill tone={c.delegationEligible ? "ok" : "bad"} testId="delegation-pill">delegation {c.delegationEligible ? "eligible" : "removed"}</Pill>
       </PageHeader>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4 mb-6">
         <Stat label="Validator" value={v.validatorVersion} sub={v.channel} testId="stat-validator-version" />
         <Stat label="Luchii" value={v.luchiiVersion} sub={`min ${req.luchii.minimum}`} testId="stat-luchii-version" />
         <Stat label="Compliance" value={c.code} tone={c.compliant ? "ok" : "bad"} sub={`min ${req.validator.minimum}`} testId="stat-compliance-code" />
@@ -77,7 +77,7 @@ export default function Overview() {
         <Stat label="Stake" value={`${(v.stake / 1000).toFixed(0)}k`} tone={c.criteria.minStake ? "ok" : "bad"} sub="min 100k FRAS" testId="stat-stake" />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
         <Panel title="Health Requirements" testId="health-panel">
           <Check ok={c.health.uptime} label="Uptime ≥ 99.9%" detail={`${v.uptime}%`} />
           <Check ok={c.health.voteParticipation} label="Vote participation ≥ 95%" detail={`${v.voteParticipation}%`} />
