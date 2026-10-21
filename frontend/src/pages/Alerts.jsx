@@ -36,10 +36,10 @@ function RuleRow({ a, onAck }) {
     <div data-testid={`alert-rule-${a.name}`} className="grid grid-cols-12 gap-2 items-center py-2 border-b border-[var(--line)] last:border-0">
       <span className="col-span-4 flex items-start gap-2 text-sm"><span className="mt-1.5"><Dot tone={a.firing ? "bad" : "ok"} /></span>
         <span className="min-w-0">{a.validatorId ? <>{a.kind === "breach" ? "Breach" : "Drift"} · <span className="font-mono">{a.validatorId}</span></> : a.name}
-          {a.validatorId && <span className="block text-xs text-[var(--text-muted)] truncate" data-testid={`alert-value-${a.validatorId}`}>{a.value}</span>}</span></span>
+          {a.validatorId && <span title={a.value} className="block text-xs text-[var(--text-muted)] truncate" data-testid={`alert-value-${a.validatorId}`}>{a.value}</span>}</span></span>
       <span className="col-span-2"><Pill tone={a.severity === "critical" ? "bad" : "warn"}>{a.severity}</Pill></span>
       <span className="col-span-2 font-mono text-[11px] text-[var(--text-2)]">→ {a.receiver}</span>
-      <span className="col-span-2 font-mono text-[11px] text-right text-[var(--text-muted)]">{a.inhibitedBy ? `inhibited by ${a.inhibitedBy}` : a.firing ? `since ${a.since?.slice(11, 19) || "now"}` : "ok"}{a.escalations ? ` · ×${a.escalations} esc` : ""}</span>
+      <span className="col-span-2 font-mono text-[11px] text-right text-[var(--text-muted)]">{a.inhibitedBy ? `inhibited by ${a.inhibitedBy}` : a.firing ? `since ${a.since?.slice(11, 19) || "now"}` : "ok"}{a.escalations ? ` · ×${a.escalations} esc${a.escalations >= 3 ? " (capped)" : ""}` : ""}</span>
       <span className="col-span-2 text-right">
         {a.firing && a.severity === "critical" && a.notified && (a.acknowledged
           ? <Pill tone="ok" testId={`alert-acked-${a.name}`}>acked</Pill>

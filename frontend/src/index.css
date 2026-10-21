@@ -6,6 +6,7 @@
 @tailwind utilities;
 
 :root, [data-theme="light"] {
+    color-scheme: light;
     --bg: #F8FAFC; --surface: #FFFFFF; --surface-2: #F1F5F9; --surface-hover: #EEF2F7;
     --line: #E2E8F0; --line-strong: #CBD5E1;
     --text: #0F172A; --text-2: #475569; --text-muted: #64748B;
@@ -22,6 +23,7 @@
 }
 
 [data-theme="dark"] {
+    color-scheme: dark;
     --bg: #0B0F17; --surface: #131A27; --surface-2: #1A2333; --surface-hover: #212C40;
     --line: #232F44; --line-strong: #334155;
     --text: #F1F5F9; --text-2: #A3B1C6; --text-muted: #6B7A90;

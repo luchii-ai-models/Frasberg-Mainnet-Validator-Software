@@ -80,6 +80,7 @@ class AlertConfig(BaseModel):
     escalationMinutes: Optional[int] = Field(None, ge=0, le=1440)
 
 
+MAX_ESCALATIONS = 3
 QUIET_DEFAULTS = {"quietEnabled": False, "quietStart": "22:00", "quietEnd": "07:00", "quietMode": "digest", "escalationMinutes": 15}
 
 
@@ -160,6 +161,7 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
     async def fleet_delete(vid: str):
         if (await fleet.delete_one({"validatorId": vid})).deleted_count != 1:
             raise FrasError("INVALID_STATE", "Fleet validator not found")
+        await db.validator_routing.delete_one({"validatorId": vid})
         await store.append_audit("VALIDATOR_DEREGISTERED", "validator-admin", metadata={"validatorId": vid})
         return await fleet_list()
 
@@ -334,7 +336,7 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
             if a["severity"] != "critical":
                 continue
             st = await alert_state.find_one({"_id": a["name"]})
-            if not st or not st.get("notified") or st.get("acknowledged") or not st.get("lastPagedAt"):
+            if not st or not st.get("notified") or st.get("acknowledged") or not st.get("lastPagedAt") or st.get("escalations", 0) >= MAX_ESCALATIONS:
                 continue
             if t - datetime.fromisoformat(st["lastPagedAt"].replace("Z", "+00:00")) < timedelta(minutes=mins):
                 continue

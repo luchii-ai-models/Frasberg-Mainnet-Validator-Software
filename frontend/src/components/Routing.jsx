@@ -18,6 +18,8 @@ export function RoutingDialog({ r, onClose, onSaved }) {
   const [member, setMember] = useState(r.slackMemberId || "");
   const [hook, setHook] = useState("");
   const save = async () => {
+    if (member.trim() && !/^[UWS][A-Z0-9]{6,15}$/.test(member.trim())) { toast.error("INVALID_MEMBER_ID", { description: "Use a Slack member ID (U… / W…) or user-group ID (S…), e.g. U0123ABCD" }); return; }
+    if (hook && !hook.trim().startsWith("https://hooks.slack.com/")) { toast.error("INVALID_WEBHOOK", { description: "Webhook must start with https://hooks.slack.com/" }); setHook(""); return; }
     const body = { slackMemberId: member.trim() };
     if (hook) body.slackWebhookUrl = hook.trim();
     const res = await call("put", `/console/fleet/${r.validatorId}/routing`, body, "Routing saved");

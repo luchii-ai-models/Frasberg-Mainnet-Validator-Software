@@ -1,6 +1,5 @@
 import "@/App.css";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Toaster } from "@/components/ui/sonner";
 import Shell from "@/components/Shell";
 import Overview from "@/pages/Overview";
 import Versions from "@/pages/Versions";
@@ -38,7 +37,6 @@ function App() {
           <Route path="readiness" element={<Readiness />} />
         </Route>
       </Routes>
-      <Toaster position="bottom-right" />
     </BrowserRouter>
   );
 }

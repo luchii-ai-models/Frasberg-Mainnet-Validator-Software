@@ -40,6 +40,12 @@
 - Slack: real incoming-webhook delivery; "Connect Slack (OAuth)" via `/console/slack/oauth/start|callback` (SLACK_CLIENT_ID/SECRET in backend .env) or paste webhook. Redirect URL `<origin>/api/console/slack/oauth/callback` must be added in the Slack app's OAuth settings
 - Polish: AlertDialog confirm on fleet remove, inputs cleared on failed archive export/verify
 
+## Iteration 4 (2026-06)
+- Slack LIVE: user's incoming webhook saved in settings (alerting.slackWebhookUrl); SLACK_BOT_TOKEN/USER_TOKEN + app creds in backend .env
+- Operator mentions: `validator_routing` {validatorId, slackMemberId (U/W/S), slackWebhookUrl}; GET /console/fleet/routing, PUT/DELETE /console/fleet/{vid}/routing, POST …/routing/test; nudges + drift alerts @mention and use own channel, else main channel
+- Drift alerts: `ValidatorDrift_<id>` from 7d trends (drift→warning Slack, breach→critical PagerDuty+Slack), auto-resolve, re-notify on severity change, escalation capped at 3
+- New theme: light default + dark toggle (localStorage fras-theme, html[data-theme]), CSS vars in index.css, sidebar grouped Public / Operator, top bar with network status
+
 ## Notes / limitations
 - Mongo is standalone (no replica set): multi-doc transactions emulated via ordering + atomic single-doc ops
 - Event bus is SIMULATED in MongoDB; Ed25519 private keys stored in Mongo (demo — use KMS/HSM in production)

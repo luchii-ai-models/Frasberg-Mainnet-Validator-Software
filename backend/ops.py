@@ -261,6 +261,8 @@ def register(api, store, db, required_versions, get_validator, alerting):
 
     @api.post("/console/fleet/{vid}/routing/test")
     async def routing_test(vid: str):
+        if vid not in {v["validatorId"] for v in await all_validators()}:
+            raise FrasError("INVALID_STATE", "Validator not found")
         cfg = await alerting["get_config"]()
         r = await alerting["routing_for"](vid)
         result, detail = await alerting["post_slack"]({**cfg, "slackWebhookUrl": r["webhook"] or cfg["slackWebhookUrl"]},
@@ -283,6 +285,11 @@ def register(api, store, db, required_versions, get_validator, alerting):
         return out
 
     alerting["sources"].append(drift_alerts)
+
+    @api.delete("/console/fleet/{vid}/routing")
+    async def routing_delete(vid: str):
+        await db.validator_routing.delete_one({"validatorId": vid})
+        return {"routing": await routing_rows()}
 
     # ---------- Slack OAuth (incoming-webhook) ----------
     @api.get("/console/slack/oauth/start")

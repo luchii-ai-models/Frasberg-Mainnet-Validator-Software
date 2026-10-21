@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { Activity, BellRing, Boxes, CalendarClock, FileSignature, FlaskConical, Hexagon, Hourglass, Inbox, KeyRound, Link2, Lock, Moon, Network, Rocket, Sun, Undo2 } from "lucide-react";
+import { Toaster } from "@/components/ui/sonner";
 import { Dot, ThemeProvider, useLoad, useTheme } from "@/components/kit";
 
 const GROUPS = [
@@ -61,7 +62,7 @@ function Topbar({ ov }) {
   const healthy = ov?.compliance?.healthy;
   return (
     <header className="sticky top-0 z-20 bg-[var(--bg)]/85 backdrop-blur-md border-b border-[var(--line)]">
-      <div className="px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between gap-3 max-w-[1440px]">
+      <div className="px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between gap-3 max-w-[1440px] mx-auto">
         <div className="flex items-center gap-2 text-sm text-[var(--text-2)]" data-testid="topbar-network-status">
           <Dot tone={healthy ? "ok" : "bad"} /><span className="font-medium text-[var(--text)]">Frasberg Mainnet</span>
           <span className="hidden sm:inline text-[var(--text-muted)]">· {healthy ? "validator healthy" : "attention needed"}</span>
@@ -70,24 +71,28 @@ function Topbar({ ov }) {
       </div>
       <div className="md:hidden flex gap-2 overflow-x-auto px-3 pb-3">
         {ALL.map(([to, label]) => (
-          <NavLink key={to} to={to} end={to === "/"} className={({ isActive }) => `text-xs whitespace-nowrap px-3 py-1.5 rounded-full border ${isActive ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--brand-subtle)]" : "border-[var(--line)] text-[var(--text-2)] hover:text-[var(--text)]"}`}>{label}</NavLink>
+          <NavLink key={to} to={to} end={to === "/"} data-testid={`m${tid(label)}`} className={({ isActive }) => `text-xs whitespace-nowrap px-3 py-1.5 rounded-full border ${isActive ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--brand-subtle)]" : "border-[var(--line)] text-[var(--text-2)] hover:text-[var(--text)]"}`}>{label}</NavLink>
         ))}
       </div>
     </header>
   );
 }
 
-export default function Shell() {
-  const [ov] = useLoad("/console/overview");
+const Frame = ({ ov }) => {
+  const { theme } = useTheme();
   return (
-    <ThemeProvider>
       <div className="min-h-screen bg-[var(--bg)] flex text-[var(--text)]">
         <Sidebar ov={ov} />
         <main className="flex-1 min-w-0">
           <Topbar ov={ov} />
-          <div className="p-4 sm:p-6 lg:p-10 max-w-[1440px]"><Outlet /></div>
+          <div className="p-4 sm:p-6 lg:p-10 max-w-[1440px] mx-auto"><Outlet /></div>
+          <Toaster position="bottom-right" theme={theme} />
         </main>
       </div>
-    </ThemeProvider>
   );
+};
+
+export default function Shell() {
+  const [ov] = useLoad("/console/overview");
+  return <ThemeProvider><Frame ov={ov} /></ThemeProvider>;
 }
