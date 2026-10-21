@@ -68,7 +68,7 @@ export default function Overview() {
         <Pill tone={c.delegationEligible ? "ok" : "bad"} testId="delegation-pill">delegation {c.delegationEligible ? "eligible" : "removed"}</Pill>
       </PageHeader>
 
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-4 mb-6">
         <Stat label="Validator" value={v.validatorVersion} sub={v.channel} testId="stat-validator-version" />
         <Stat label="Luchii" value={v.luchiiVersion} sub={`min ${req.luchii.minimum}`} testId="stat-luchii-version" />
         <Stat label="Compliance" value={c.code} tone={c.compliant ? "ok" : "bad"} sub={`min ${req.validator.minimum}`} testId="stat-compliance-code" />

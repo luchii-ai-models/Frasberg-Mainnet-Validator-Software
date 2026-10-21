@@ -47,6 +47,12 @@ ERROR_MAP = {
     "REPLAY_IN_PROGRESS": (409, "Replay already claimed by another worker."),
     "DUPLICATE_APPROVAL": (409, "Approver already approved."),
     "INVALID_STATE": (409, "Invalid state transition."),
+    "API_KEY_MISSING": (401, "Send an API key in the X-API-Key header."),
+    "API_KEY_INVALID": (401, "API key is not valid."),
+    "API_KEY_REVOKED": (401, "API key has been revoked."),
+    "API_KEY_DISABLED": (401, "API key is disabled."),
+    "INSUFFICIENT_SCOPE": (403, "API key scope does not allow this request."),
+    "API_KEY_NOT_FOUND": (404, "API key not found."),
     "ROTATION_FAILED": (500, "Rotation failed; no completion recorded."),
     "INTERNAL_ERROR": (500, "Unexpected internal error."),
 }

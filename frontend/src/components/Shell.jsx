@@ -1,14 +1,14 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Activity, BellRing, Boxes, CalendarClock, FileSignature, FlaskConical, Hexagon, Hourglass, Inbox, KeyRound, Link2, Lock, Moon, Network, Rocket, Sun, Undo2 } from "lucide-react";
+import { KeySquare, Activity, BellRing, Boxes, CalendarClock, FileSignature, FlaskConical, Hexagon, Hourglass, Inbox, KeyRound, Link2, Lock, Moon, Network, Rocket, Sun, Undo2 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { Dot, ThemeProvider, useLoad, useTheme } from "@/components/kit";
 
 const GROUPS = [
-  ["Public", [["/", "Overview", Boxes], ["/fleet", "Validator Fleet", Network], ["/upgrades", "Upgrade Countdown", Hourglass]]],
+  [null, [["/", "Overview", Boxes], ["/fleet", "Validator Fleet", Network], ["/upgrades", "Upgrade Countdown", Hourglass]]],
   ["Operator", [
     ["/versions", "Required Versions", CalendarClock], ["/policies", "Signed Policies", FileSignature], ["/keys", "Signing Keys", KeyRound],
     ["/locks", "Locks & Fencing", Lock], ["/audit", "Audit Chain", Link2], ["/outbox", "Outbox", Inbox], ["/metrics", "Metrics & SLO", Activity],
-    ["/alerts", "Alert Delivery", BellRing], ["/rollbacks", "Rollbacks", Undo2], ["/tests", "Test Runner", FlaskConical], ["/readiness", "Readiness Gate", Rocket]]],
+    ["/alerts", "Alert Delivery", BellRing], ["/rollbacks", "Rollbacks", Undo2], ["/tests", "Test Runner", FlaskConical], ["/readiness", "Readiness Gate", Rocket], ["/access-keys", "API Keys", KeySquare]]],
 ];
 const ALL = GROUPS.flatMap(([, items]) => items);
 const tid = (label) => `nav-${label.toLowerCase().replace(/[^a-z]+/g, "-")}`;
@@ -43,8 +43,8 @@ function Sidebar({ ov }) {
       </div>
       <nav className="flex-1 overflow-y-auto scroll-thin pb-4 space-y-6">
         {GROUPS.map(([g, items]) => (
-          <div key={g} data-testid={`nav-group-${g.toLowerCase()}`}>
-            <div className="px-6 mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{g}</div>
+          <div key={g || "main"} data-testid={`nav-group-${(g || "main").toLowerCase()}`}>
+            {g && <div className="px-6 mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{g}</div>}
             <div className="space-y-0.5">{items.map(NavItem)}</div>
           </div>
         ))}

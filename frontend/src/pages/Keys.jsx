@@ -24,7 +24,7 @@ export default function Keys() {
       </PageHeader>
       <Panel title="Key Lifecycle Matrix" testId="keys-table" className="mb-6">
         <Table>
-          <TableHeader><TableRow>{["Key ID", "Status", "Public key", "Fencing token", "Created", "Revoked", ""].map((h) => <TableHead key={h} className="text-xs font-semibold text-[var(--text-muted)]">{h}</TableHead>)}</TableRow></TableHeader>
+          <TableHeader><TableRow>{["Key ID", "Status", "Verification key", "Fencing token", "Created", "Revoked", ""].map((h) => <TableHead key={h} className="text-xs font-semibold text-[var(--text-muted)]">{h}</TableHead>)}</TableRow></TableHeader>
           <TableBody>
             {(keys || []).map((k) => (
               <TableRow key={k.key_id} data-testid={`key-row-${k.key_id}`}>

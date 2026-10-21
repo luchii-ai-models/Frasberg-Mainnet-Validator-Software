@@ -13,6 +13,7 @@ import Rollbacks from "@/pages/Rollbacks";
 import Tests from "@/pages/Tests";
 import Readiness from "@/pages/Readiness";
 import Fleet from "@/pages/Fleet";
+import ApiKeys from "@/pages/ApiKeys";
 import Alerts from "@/pages/Alerts";
 import Upgrades from "@/pages/Upgrades";
 
@@ -34,6 +35,7 @@ function App() {
           <Route path="fleet" element={<Fleet />} />
           <Route path="upgrades" element={<Upgrades />} />
           <Route path="alerts" element={<Alerts />} />
+          <Route path="access-keys" element={<ApiKeys />} />
           <Route path="readiness" element={<Readiness />} />
         </Route>
       </Routes>
