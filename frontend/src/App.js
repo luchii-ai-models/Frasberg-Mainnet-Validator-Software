@@ -13,6 +13,9 @@ import Metrics from "@/pages/Metrics";
 import Rollbacks from "@/pages/Rollbacks";
 import Tests from "@/pages/Tests";
 import Readiness from "@/pages/Readiness";
+import Fleet from "@/pages/Fleet";
+import Alerts from "@/pages/Alerts";
+import Upgrades from "@/pages/Upgrades";
 
 function App() {
   return (
@@ -29,6 +32,9 @@ function App() {
           <Route path="metrics" element={<Metrics />} />
           <Route path="rollbacks" element={<Rollbacks />} />
           <Route path="tests" element={<Tests />} />
+          <Route path="fleet" element={<Fleet />} />
+          <Route path="upgrades" element={<Upgrades />} />
+          <Route path="alerts" element={<Alerts />} />
           <Route path="readiness" element={<Readiness />} />
         </Route>
       </Routes>

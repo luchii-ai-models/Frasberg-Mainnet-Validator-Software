@@ -15,10 +15,11 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 import artifacts  # noqa: E402
+import extras  # noqa: E402
 import core  # noqa: E402
 import selftests  # noqa: E402
 from core import FrasError  # noqa: E402
-from store import KNOWN_VERSIONS, Store, clean, iso, now  # noqa: E402
+from store import KNOWN_VERSIONS, Store, clean, iso  # noqa: E402
 
 client = AsyncIOMotorClient(os.environ["MONGO_URL"])
 db = client[os.environ["DB_NAME"]]
@@ -34,6 +35,7 @@ SCHEDULE = [
     {"epoch": 300, "validator": {"minimum": "3.0.0", "recommended": "3.5.0", "maximum": "3.5.x", "channel": "stable"}, "luchii": {"minimum": "3.0.0", "recommended": "3.5.0", "maximum": "3.5.x"}},
     {"epoch": 400, "validator": {"minimum": "4.0.0", "recommended": "4.2.1", "maximum": "4.9.x", "channel": "stable"}, "luchii": {"minimum": "4.0.0", "recommended": "4.2.1", "maximum": "4.9.x"}},
     {"epoch": 900, "validator": {"minimum": "6.2.0", "recommended": "6.4.1", "maximum": "6.x", "channel": "stable"}, "luchii": {"minimum": "4.0.0", "recommended": "4.2.1"}},
+    {"epoch": 1000, "validator": {"minimum": "6.4.0", "recommended": "6.4.1", "maximum": "6.x", "channel": "stable"}, "luchii": {"minimum": "4.2.0", "recommended": "4.2.1"}},
 ]
 
 VALIDATOR_SEED = {
@@ -115,18 +117,21 @@ async def seed():
     await store.ensure_indexes()
     if not await db.validator.find_one({"_id": "self"}):
         await db.validator.insert_one(dict(VALIDATOR_SEED))
-    if not await store.schedule.find_one({}):
-        for s in SCHEDULE:
+    published = {100: "2026-01-01", 200: "2026-02-01", 300: "2026-03-01", 400: "2026-04-01", 900: "2026-09-28", 1000: "2026-06-01"}
+    for s in SCHEDULE:
+        if not await store.schedule.find_one({"epoch": s["epoch"]}):
             await store.schedule.insert_one({**s, "enforcement": {"startsEpoch": s["epoch"], "graceEndsEpoch": s["epoch"] + 1},
-                                             "publishedAt": "2026-09-28T00:00:00Z" if s["epoch"] == 900 else f"2026-0{s['epoch'] // 100}-01T00:00:00Z"})
+                                             "publishedAt": f"{published[s['epoch']]}T00:00:00Z"})
     if not await store.keys.find_one({}):
         await store.create_key("frasberg-foundation")
         await store.create_key("frasberg-foundation")
-        for s in await store.schedule.find({}, {"_id": 0}).to_list(None):
+    if await store.keys.find_one({"status": "active"}):
+        for s in await store.schedule.find({"signature": {"$exists": False}}, {"_id": 0}).to_list(None):
             env = await store.sign_policy(policy_for(s))
             await store.schedule.update_one({"epoch": s["epoch"]}, {"$set": {"policyId": env["policy"]["policyId"],
                                             "signature": {"keyId": env["keyId"], "signature": env["signature"]}}})
         await store.publish_batch("publisher-seed")
+    await extras_seed()
 
 
 # ---------- public validator API (spec endpoints) ----------
@@ -638,6 +643,7 @@ async def readiness():
     return {"decision": decision, "checks": rows, "passed": sum(r["passed"] for r in rows), "total": len(rows), "evaluatedAt": iso()}
 
 
+extras_seed = extras.register(api, store, db, required_versions, metric_snapshot, get_validator)
 app.include_router(api)
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
                    allow_methods=["*"], allow_headers=["*"], expose_headers=["X-Request-ID"])

@@ -1,16 +1,19 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Activity, Boxes, CalendarClock, FileSignature, FlaskConical, GitBranch, Inbox, KeyRound, Link2, Lock, Rocket, Undo2 } from "lucide-react";
+import { Activity, BellRing, Boxes, Hourglass, Network, CalendarClock, FileSignature, FlaskConical, GitBranch, Inbox, KeyRound, Link2, Lock, Rocket, Undo2 } from "lucide-react";
 import { Dot, useLoad } from "@/components/kit";
 
 const NAV = [
   ["/", "Overview", Boxes],
+  ["/fleet", "Validator Fleet", Network],
   ["/versions", "Required Versions", CalendarClock],
+  ["/upgrades", "Upgrade Countdown", Hourglass],
   ["/policies", "Signed Policies", FileSignature],
   ["/keys", "Signing Keys", KeyRound],
   ["/locks", "Locks & Fencing", Lock],
   ["/audit", "Audit Chain", Link2],
   ["/outbox", "Outbox", Inbox],
   ["/metrics", "Metrics & SLO", Activity],
+  ["/alerts", "Alert Delivery", BellRing],
   ["/rollbacks", "Rollbacks", Undo2],
   ["/tests", "Test Runner", FlaskConical],
   ["/readiness", "Readiness Gate", Rocket],

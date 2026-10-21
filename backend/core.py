@@ -350,9 +350,9 @@ def hash_audit_record(previous_hash, payload):
     return hashlib.sha256(previous_hash.encode() + canonicalize(payload).encode()).hexdigest()
 
 
-def verify_audit_chain(records):
-    prev = GENESIS
-    expected_seq = 1
+def verify_audit_chain(records, start_prev=GENESIS, start_seq=1):
+    prev = start_prev
+    expected_seq = start_seq
     for i, r in enumerate(records):
         if r["sequence"] != expected_seq:
             return {"valid": False, "code": "SEQUENCE_GAP", "brokenAt": i, "sequence": r["sequence"]}
@@ -471,6 +471,7 @@ for _e in ["KEY_CREATED", "KEY_ROTATION_STARTED", "KEY_ROTATION_COMPLETED", "KEY
            "ROLLBACK_VALIDATION_FAILED", "ROLLBACK_APPROVAL_DENIED",
            "APPROVAL_DENIED", "SELF_APPROVAL_FORBIDDEN", "SIGNATURE_FAILURE", "STALE_FENCING_TOKEN"]:
     RETENTION[_e] = "FOREVER"
+RETENTION["AUDIT_ARCHIVED"] = "FOREVER"
 for _e in ["CHAOS_TEST", "READINESS_CHECK", "DEPLOYMENT_EVENT", "VALIDATOR_UPDATED", "TEST_RUN"]:
     RETENTION[_e] = "7Y"
 
