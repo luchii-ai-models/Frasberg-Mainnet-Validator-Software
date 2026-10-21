@@ -41,6 +41,11 @@ class NudgeBody(BaseModel):
     resend: bool = False
 
 
+class RoutingBody(BaseModel):
+    slackMemberId: Optional[str] = Field(None, pattern=r"^$|^[UWS][A-Z0-9]{6,15}$")
+    slackWebhookUrl: Optional[str] = None
+
+
 def _ms(t):
     return int(t.timestamp() * 1000)
 
@@ -202,8 +207,10 @@ def register(api, store, db, required_versions, get_validator, alerting):
                     f"Running core {v['validatorVersion']} / luchii {v['luchiiVersion']} — epoch {row['epoch']} requires "
                     f"core ≥ {req['validator']['minimum']} (rec {req['validator']['recommended']}) and luchii ≥ {req['luchii']['minimum']}.\n"
                     f"Status: {code}. Enforcement {row['enforceAt'][:16].replace('T', ' ')} UTC · grace ends {row['graceEndsAt'][:16].replace('T', ' ')} UTC.")
-            result, detail = await alerting["post_slack"](cfg, text)
-            doc = {**key, "id": str(uuid.uuid4()), "name": v["name"], "operator": v["operator"], "code": code,
+            route = await alerting["routing_for"](v["validatorId"])
+            text = f"{route['mention']} {text}".strip()
+            result, detail = await alerting["post_slack"]({**cfg, "slackWebhookUrl": route["webhook"] or cfg["slackWebhookUrl"]}, text)
+            doc = {**key, "mention": route["mention"] or None, "target": "own channel" if route["webhook"] else "main channel", "id": str(uuid.uuid4()), "name": v["name"], "operator": v["operator"], "code": code,
                    "trigger": trigger, "result": result, "detail": detail, "phase": row["currentPhase"], "sentAt": iso(),
                    "channel": cfg.get("slackChannel")}
             await nudges.update_one(key, {"$set": doc, "$inc": {"count": 1}}, upsert=True)
@@ -228,6 +235,54 @@ def register(api, store, db, required_versions, get_validator, alerting):
         if not row or row["currentPhase"] == "enforced":
             raise FrasError("INVALID_STATE", "No pending requirement for that epoch")
         return {"sent": await send_nudges(row, "manual", body.resend)}
+
+    # ---------- per-validator Slack routing ----------
+    async def routing_rows():
+        stored = {r["validatorId"]: r async for r in db.validator_routing.find({}, {"_id": 0})}
+        return [{"validatorId": v["validatorId"], "name": v["name"], "slackMemberId": stored.get(v["validatorId"], {}).get("slackMemberId"),
+                 "hasWebhook": bool(stored.get(v["validatorId"], {}).get("slackWebhookUrl"))} for v in await all_validators()]
+
+    @api.get("/console/fleet/routing")
+    async def routing_list():
+        return {"routing": await routing_rows()}
+
+    @api.put("/console/fleet/{vid}/routing")
+    async def routing_put(vid: str, body: RoutingBody):
+        if vid not in {v["validatorId"] for v in await all_validators()}:
+            raise FrasError("INVALID_STATE", "Validator not found")
+        upd = body.model_dump(exclude_none=True)
+        if upd.get("slackWebhookUrl") and not upd["slackWebhookUrl"].startswith("https://hooks.slack.com/"):
+            raise FrasError("INVALID_STATE", "Slack webhook must start with https://hooks.slack.com/")
+        upd = {k: (v or None) for k, v in upd.items()}
+        await db.validator_routing.update_one({"validatorId": vid}, {"$set": {**upd, "validatorId": vid}}, upsert=True)
+        await store.append_audit("VALIDATOR_ROUTING_UPDATED", "validator-admin",
+                                 metadata={"validatorId": vid, "slackMemberId": upd.get("slackMemberId"), "webhookChanged": "slackWebhookUrl" in upd})
+        return {"routing": await routing_rows()}
+
+    @api.post("/console/fleet/{vid}/routing/test")
+    async def routing_test(vid: str):
+        cfg = await alerting["get_config"]()
+        r = await alerting["routing_for"](vid)
+        result, detail = await alerting["post_slack"]({**cfg, "slackWebhookUrl": r["webhook"] or cfg["slackWebhookUrl"]},
+                                                     f"{r['mention']} :wave: Frasberg routing test for *{vid}* — operator notifications will arrive here.".strip())
+        return {"result": result, "detail": detail, "target": "own channel" if r["webhook"] else "main channel", "mention": r["mention"] or None}
+
+    # ---------- drift alerts (one per validator: drift → warning, breach → critical) ----------
+    LABEL = {"uptime": "uptime", "voteParticipation": "votes", "missedBlocks": "missed"}
+
+    async def drift_alerts():
+        tr = await fleet_trends("7d")
+        out = []
+        for v in tr["drift"]:
+            bad = [f for f, m in v["metrics"].items() if m["breach"]]
+            drifting = [f for f, m in v["metrics"].items() if m["drifting"]]
+            flagged = bad or drifting
+            value = ", ".join(f"{LABEL[f]} {v['metrics'][f]['last']} ({v['metrics'][f]['change']:+}/7d)" for f in flagged) or "stable"
+            out.append({"name": f"ValidatorDrift_{v['validatorId']}", "severity": "critical" if bad else "warning", "service": "fleet",
+                        "value": value, "firing": bool(flagged), "validatorId": v["validatorId"], "kind": "breach" if bad else "drift" if drifting else None})
+        return out
+
+    alerting["sources"].append(drift_alerts)
 
     # ---------- Slack OAuth (incoming-webhook) ----------
     @api.get("/console/slack/oauth/start")

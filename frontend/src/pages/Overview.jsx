@@ -18,7 +18,7 @@ function Endpoints({ tick }) {
       <div className="flex flex-wrap gap-2 mb-3">
         {ENDPOINTS.map((e) => (
           <button key={e} data-testid={`endpoint-tab-${e.split("/").pop()}`} onClick={() => setActive(e)}
-            className={`font-mono text-[11px] px-2.5 py-1 rounded-sm border transition-colors ${active === e ? "border-cyan-400 text-cyan-300 bg-cyan-400/10" : "border-[#1E2638] text-slate-400 hover:text-slate-200"}`}>{e}</button>
+            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${active === e ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--brand-subtle)]" : "border-[var(--line)] text-[var(--text-2)] hover:text-[var(--text)]"}`}>{e}</button>
         ))}
       </div>
       <Json value={body || "loading…"} testId="endpoint-response" />
@@ -40,12 +40,12 @@ function Simulator({ v, onSaved }) {
     <Panel title="Operator State" testId="validator-simulator" right={<Button data-testid="validator-save-button" size="sm" onClick={save}>Apply</Button>}>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {["validatorVersion", "luchiiVersion", "channel", ...NUM].map((k) => (
-          <Field key={k} label={k}><Input data-testid={`validator-input-${k}`} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} className="font-mono text-xs bg-[#04060A]" /></Field>
+          <Field key={k} label={k}><Input data-testid={`validator-input-${k}`} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} className="font-mono text-xs bg-[var(--surface)]" /></Field>
         ))}
       </div>
       <div className="flex flex-wrap gap-5 mt-4">
         {BOOL.map((k) => (
-          <label key={k} className="flex items-center gap-2 text-xs text-slate-300 font-mono">
+          <label key={k} className="flex items-center gap-2 text-xs text-[var(--text-2)] font-mono">
             <Switch data-testid={`validator-switch-${k}`} checked={!!f[k]} onCheckedChange={(c) => setF({ ...f, [k]: c })} />{k}
           </label>
         ))}
@@ -57,7 +57,7 @@ function Simulator({ v, onSaved }) {
 export default function Overview() {
   const [ov, reload] = useLoad("/console/overview");
   const [tick, setTick] = useState(0);
-  if (!ov) return <div className="font-mono text-slate-500">loading validator…</div>;
+  if (!ov) return <div className="font-mono text-[var(--text-muted)]">loading validator…</div>;
   const { validator: v, compliance: c, healthRequirements: hr, required: req } = ov;
   const refresh = () => { reload(); setTick((t) => t + 1); };
   return (
@@ -92,7 +92,7 @@ export default function Overview() {
           <Check ok={c.votingEnabled} label="Governance voting" detail={c.votingEnabled ? "enabled" : "disabled"} />
           <Check ok={!c.effects.warning} label="Upgrade warning" detail={c.effects.warning ? "issued" : "none"} />
           <Check ok={!c.inGracePeriod} label="Grace period" detail={c.inGracePeriod ? `until epoch ${req.enforcement.graceEndsEpoch}` : "not active"} />
-          <div className="mt-4 font-mono text-[11px] text-slate-500">Announcement 30d · Upgrade window 14d · Grace 1 epoch</div>
+          <div className="mt-4 font-mono text-[11px] text-[var(--text-muted)]">Announcement 30d · Upgrade window 14d · Grace 1 epoch</div>
         </Panel>
       </div>
 
@@ -102,8 +102,8 @@ export default function Overview() {
           <div className="terminal p-4 font-mono text-xs leading-6">
             {Object.entries(v.stack).map(([name, parts]) => (
               <div key={name} className="mb-2">
-                <div className="text-cyan-300">{name} <span className="text-slate-600">{name === "Luchii Runtime" ? v.luchiiVersion : v.validatorVersion}</span></div>
-                {parts.map((p, i) => <div key={p} className="text-slate-400">{i === parts.length - 1 ? "└──" : "├──"} {p} <span className="text-emerald-400">●</span></div>)}
+                <div className="text-[var(--brand)]">{name} <span className="text-[var(--text-muted)]">{name === "Luchii Runtime" ? v.luchiiVersion : v.validatorVersion}</span></div>
+                {parts.map((p, i) => <div key={p} className="text-[var(--text-2)]">{i === parts.length - 1 ? "└──" : "├──"} {p} <span className="text-[var(--ok)]">●</span></div>)}
               </div>
             ))}
           </div>

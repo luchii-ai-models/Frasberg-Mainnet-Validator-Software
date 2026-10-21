@@ -36,11 +36,11 @@ export default function Policies() {
         <Panel title="Policy Document" testId="policy-editor" right={<>
           <Button data-testid="policy-canonicalize-button" size="sm" variant="secondary" onClick={doCanon}>Canonicalize</Button>
           <Button data-testid="policy-sign-button" size="sm" onClick={doSign}>Sign</Button></>}>
-          <Textarea data-testid="policy-json-input" value={text} onChange={(e) => setText(e.target.value)} rows={14} className="font-mono text-xs bg-[#04060A]" />
+          <Textarea data-testid="policy-json-input" value={text} onChange={(e) => setText(e.target.value)} rows={14} className="font-mono text-xs bg-[var(--surface)]" />
           {canon && (
             <div className="mt-4 space-y-2" data-testid="canonical-output">
               {canon.canonical && <Json value={canon.canonical} className="max-h-32" />}
-              {canon.schemaErrors?.length ? canon.schemaErrors.map((e) => <div key={e} className="font-mono text-[11px] text-[#FF3366]">✕ {e}</div>) : <Pill tone="ok">schema valid</Pill>}
+              {canon.schemaErrors?.length ? canon.schemaErrors.map((e) => <div key={e} className="font-mono text-[11px] text-[var(--bad)]">✕ {e}</div>) : <Pill tone="ok">schema valid</Pill>}
             </div>
           )}
         </Panel>
@@ -50,10 +50,10 @@ export default function Policies() {
           <Button data-testid="verify-envelope-button" size="sm" onClick={() => doVerify(env)}>Verify</Button></>}>
           {env ? (
             <div className="space-y-3">
-              <Field label="keyId (verification selects key by keyId)"><Input data-testid="envelope-keyid-input" value={env.keyId} onChange={(e) => setEnv({ ...env, keyId: e.target.value })} className="font-mono text-xs bg-[#04060A]" /></Field>
+              <Field label="keyId (verification selects key by keyId)"><Input data-testid="envelope-keyid-input" value={env.keyId} onChange={(e) => setEnv({ ...env, keyId: e.target.value })} className="font-mono text-xs bg-[var(--surface)]" /></Field>
               <Json value={env} className="max-h-60" />
             </div>
-          ) : <div className="text-sm text-slate-500">Sign a policy to produce an envelope, then tamper with it to watch verification fail.</div>}
+          ) : <div className="text-sm text-[var(--text-muted)]">Sign a policy to produce an envelope, then tamper with it to watch verification fail.</div>}
           {verify && (
             <div className="mt-4 flex items-center gap-3" data-testid="verify-result">
               <Pill tone={verify.valid ? "ok" : "bad"}>{verify.valid ? "valid" : "invalid"}</Pill>
@@ -63,16 +63,16 @@ export default function Policies() {
         </Panel>
       </div>
       <Panel title="Published Policies" testId="policies-list">
-        <div className="divide-y divide-[#1E2638]">
+        <div className="divide-y divide-[var(--line)]">
           {(list || []).map((p) => (
             <div key={p.signature} className="py-3 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="font-mono text-sm text-slate-100">{p.policy.policyId}</div>
-                <div className="font-mono text-[11px] text-slate-500">epoch {p.policy.epoch} · min {p.policy.requirements.validatorMin} · {p.signedAt}</div>
+                <div className="font-mono text-sm text-[var(--text)]">{p.policy.policyId}</div>
+                <div className="font-mono text-[11px] text-[var(--text-muted)]">epoch {p.policy.epoch} · min {p.policy.requirements.validatorMin} · {p.signedAt}</div>
               </div>
               <div className="flex items-center gap-2">
                 <Pill tone="violet">{p.keyId}</Pill>
-                <span className="font-mono text-[11px] text-slate-500">{short(p.signature, 16)}</span>
+                <span className="font-mono text-[11px] text-[var(--text-muted)]">{short(p.signature, 16)}</span>
                 <Button data-testid={`verify-policy-${p.policy.epoch}`} size="sm" variant="secondary" onClick={() => { setEnv({ policy: p.policy, keyId: p.keyId, signature: p.signature }); doVerify(p); }}>Verify</Button>
               </div>
             </div>

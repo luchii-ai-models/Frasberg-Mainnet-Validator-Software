@@ -25,15 +25,15 @@ export const UpgradeNudges = ({ epochs }) => {
         ))}
       </div>
       <div className="terminal p-3 font-mono text-[11px] max-h-64 overflow-auto scroll-thin space-y-1" data-testid="nudges-log">
-        {d.nudges.length === 0 && <div className="text-slate-600">no nudges yet — lagging validators get one Slack heads-up automatically when the upgrade window opens</div>}
+        {d.nudges.length === 0 && <div className="text-[var(--text-muted)]">no nudges yet — lagging validators get one Slack heads-up automatically when the upgrade window opens</div>}
         {d.nudges.map((n) => (
           <div key={`${n.epoch}-${n.validatorId}`} data-testid={`nudge-row-${n.epoch}-${n.validatorId}`} className="flex flex-wrap gap-2 items-center">
-            <span className="text-slate-600">{n.sentAt.slice(0, 19).replace("T", " ")}</span>
+            <span className="text-[var(--text-muted)]">{n.sentAt.slice(0, 19).replace("T", " ")}</span>
             <Pill tone={TONE[n.result] || "info"}>{n.result}</Pill>
-            <span className="text-cyan-300">{n.validatorId}</span>
-            <span className="text-slate-300">{n.name} · {n.operator}</span>
-            <span className="text-[#FFB300]">{n.code}</span>
-            <span className="text-slate-500">epoch {n.epoch} · {n.trigger} · ×{n.count}</span>
+            <span className="text-[var(--brand)]">{n.validatorId}</span>
+            <span className="text-[var(--text-2)]">{n.name} · {n.operator}</span>
+            <span className="text-[var(--warn)]">{n.code}</span>
+            <span className="text-[var(--text-muted)]">epoch {n.epoch} · {n.trigger} · ×{n.count}{n.target ? ` · ${n.target}` : ""}{n.mention ? ` · ${n.mention}` : ""}</span>
           </div>
         ))}
       </div>

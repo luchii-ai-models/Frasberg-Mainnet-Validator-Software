@@ -1,16 +1,14 @@
 import { useState } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Panel, Pill, useLoad } from "@/components/kit";
+import { Panel, Pill, useChart, useLoad } from "@/components/kit";
 
-const PALETTE = ["#00F0FF", "#00E676", "#FFB300", "#FF3366", "#8B5CF6", "#F472B6", "#38BDF8", "#A3E635", "#FB923C", "#E2E8F0"];
 const METRIC_LABEL = { uptime: "Uptime %", voteParticipation: "Vote participation %", missedBlocks: "Missed blocks %" };
-const TT = { background: "#0F131D", border: "1px solid #1E2638", fontFamily: "JetBrains Mono", fontSize: 11 };
 
 const Tabs = ({ items, value, onChange, prefix }) => (
   <div className="flex gap-1">
     {items.map((k) => (
       <button key={k} data-testid={`${prefix}-${k}`} onClick={() => onChange(k)}
-        className={`font-mono text-[11px] px-2.5 py-1 rounded-sm border transition-colors ${value === k ? "border-cyan-400 text-cyan-300 bg-cyan-400/10" : "border-[#1E2638] text-slate-400 hover:text-slate-200"}`}>{k}</button>
+        className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${value === k ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--brand-subtle)]" : "border-[var(--line)] text-[var(--text-2)] hover:text-[var(--text)]"}`}>{k}</button>
     ))}
   </div>
 );
@@ -28,12 +26,12 @@ function DriftList({ drift, metric, colorOf, focus, setFocus }) {
         const tone = m.breach ? "bad" : m.drifting ? "warn" : "ok";
         return (
           <button key={v.validatorId} data-testid={`fleet-drift-${v.validatorId}`} onClick={() => setFocus(focus === v.validatorId ? null : v.validatorId)}
-            className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-sm border text-left transition-colors ${focus === v.validatorId ? "border-cyan-400/60 bg-cyan-400/5" : "border-transparent hover:bg-[#161B29]"}`}>
-            <span className="flex items-center gap-2 font-mono text-[11px] text-slate-300">
+            className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-sm border text-left transition-colors ${focus === v.validatorId ? "border-[var(--brand)] bg-[var(--brand-subtle)]" : "border-transparent hover:bg-[var(--surface-hover)]"}`}>
+            <span className="flex items-center gap-2 font-mono text-[11px] text-[var(--text-2)]">
               <span className="w-2 h-2 rounded-full" style={{ background: colorOf(v.validatorId) }} />{v.validatorId}
             </span>
             <span className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-slate-500">{m.change > 0 ? "+" : ""}{m.change}</span>
+              <span className="font-mono text-[10px] text-[var(--text-muted)]">{m.change > 0 ? "+" : ""}{m.change}</span>
               <Pill tone={tone}>{m.breach ? "breach" : m.drifting ? "drift" : "stable"}</Pill>
             </span>
           </button>
@@ -48,7 +46,8 @@ export const FleetTrends = () => {
   const [metric, setMetric] = useState("uptime");
   const [focus, setFocus] = useState(null);
   const [d] = useLoad(`/console/fleet/trends?range=${range}`);
-  const colorOf = (id) => PALETTE[(d?.validators.indexOf(id) ?? 0) % PALETTE.length];
+  const ch = useChart();
+  const colorOf = (id) => ch.palette[(d?.validators.indexOf(id) ?? 0) % ch.palette.length];
   const flagged = d ? d.drift.filter((v) => v.drifting || v.breach).length : 0;
   return (
     <Panel title="Fleet trends" testId="fleet-trends" className="mb-6"
@@ -59,14 +58,14 @@ export const FleetTrends = () => {
           {d && (
             <ResponsiveContainer>
               <LineChart data={d.series[metric] || []} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid stroke="#1E2638" strokeDasharray="2 4" />
-                <XAxis dataKey="t" tickFormatter={fmtT(range)} stroke="#475569" fontSize={10} fontFamily="JetBrains Mono" minTickGap={30} />
-                <YAxis stroke="#475569" fontSize={10} fontFamily="JetBrains Mono" domain={["auto", "auto"]} />
-                <Tooltip contentStyle={TT} labelFormatter={(t) => new Date(t).toISOString().slice(0, 16).replace("T", " ")} />
-                <ReferenceLine y={d.thresholds[metric]} stroke="#FF3366" strokeDasharray="4 4" label={{ value: "min", fill: "#FF3366", fontSize: 10 }} />
+                <CartesianGrid stroke={ch.grid} strokeDasharray="3 5" vertical={false} />
+                <XAxis dataKey="t" tickFormatter={fmtT(range)} stroke={ch.axis} fontSize={11} minTickGap={30} tickLine={false} />
+                <YAxis stroke={ch.axis} fontSize={11} domain={["auto", "auto"]} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={ch.tooltip} labelFormatter={(t) => new Date(t).toISOString().slice(0, 16).replace("T", " ")} />
+                <ReferenceLine y={d.thresholds[metric]} stroke={ch.bad} strokeDasharray="4 4" label={{ value: "threshold", fill: ch.bad, fontSize: 10, position: "insideTopRight" }} />
                 {d.validators.map((id) => (
                   <Line key={id} type="monotone" dataKey={id} dot={false} isAnimationActive={false} stroke={colorOf(id)}
-                    strokeWidth={focus === id ? 2.5 : 1.2} strokeOpacity={!focus || focus === id ? 1 : 0.15} />
+                    strokeWidth={focus === id ? 2.5 : 1.5} strokeOpacity={!focus || focus === id ? 1 : 0.15} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -74,7 +73,7 @@ export const FleetTrends = () => {
         </div>
         {d && <DriftList drift={d.drift} metric={metric} colorOf={colorOf} focus={focus} setFocus={setFocus} />}
       </div>
-      <p className="font-mono text-[10px] text-slate-500 mt-3">sampled every 60s · drift = change between first and last sixth of the window · dashed line = delegation threshold</p>
+      <p className="font-mono text-[10px] text-[var(--text-muted)] mt-3">sampled every 60s · drift = change between first and last sixth of the window · dashed line = delegation threshold</p>
     </Panel>
   );
 };

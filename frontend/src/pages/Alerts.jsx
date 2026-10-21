@@ -8,7 +8,7 @@ import { Dot, Field, PageHeader, Panel, Pill, Stat, useLoad } from "@/components
 import { QuietHours } from "@/components/QuietHours";
 import { call } from "@/lib/api";
 
-const RESULT_COLOR = { delivered: "#00E676", failed: "#FF3366", queued: "#8B5CF6", suppressed: "#64748B" };
+const RESULT_COLOR = { delivered: "var(--ok)", failed: "var(--bad)", queued: "var(--violet)", suppressed: "var(--text-muted)" };
 
 function useSlackReturn(reload) {
   const [params, setParams] = useSearchParams();
@@ -33,11 +33,13 @@ const connectSlack = async () => {
 
 function RuleRow({ a, onAck }) {
   return (
-    <div data-testid={`alert-rule-${a.name}`} className="grid grid-cols-12 gap-2 items-center py-2 border-b border-[#1E2638] last:border-0">
-      <span className="col-span-4 flex items-center gap-2 text-sm"><Dot tone={a.firing ? "bad" : "ok"} />{a.name}</span>
+    <div data-testid={`alert-rule-${a.name}`} className="grid grid-cols-12 gap-2 items-center py-2 border-b border-[var(--line)] last:border-0">
+      <span className="col-span-4 flex items-start gap-2 text-sm"><span className="mt-1.5"><Dot tone={a.firing ? "bad" : "ok"} /></span>
+        <span className="min-w-0">{a.validatorId ? <>{a.kind === "breach" ? "Breach" : "Drift"} · <span className="font-mono">{a.validatorId}</span></> : a.name}
+          {a.validatorId && <span className="block text-xs text-[var(--text-muted)] truncate" data-testid={`alert-value-${a.validatorId}`}>{a.value}</span>}</span></span>
       <span className="col-span-2"><Pill tone={a.severity === "critical" ? "bad" : "warn"}>{a.severity}</Pill></span>
-      <span className="col-span-2 font-mono text-[11px] text-slate-400">→ {a.receiver}</span>
-      <span className="col-span-2 font-mono text-[11px] text-right text-slate-500">{a.inhibitedBy ? `inhibited by ${a.inhibitedBy}` : a.firing ? `since ${a.since?.slice(11, 19) || "now"}` : "ok"}{a.escalations ? ` · ×${a.escalations} esc` : ""}</span>
+      <span className="col-span-2 font-mono text-[11px] text-[var(--text-2)]">→ {a.receiver}</span>
+      <span className="col-span-2 font-mono text-[11px] text-right text-[var(--text-muted)]">{a.inhibitedBy ? `inhibited by ${a.inhibitedBy}` : a.firing ? `since ${a.since?.slice(11, 19) || "now"}` : "ok"}{a.escalations ? ` · ×${a.escalations} esc` : ""}</span>
       <span className="col-span-2 text-right">
         {a.firing && a.severity === "critical" && a.notified && (a.acknowledged
           ? <Pill tone="ok" testId={`alert-acked-${a.name}`}>acked</Pill>
@@ -79,14 +81,14 @@ export default function Alerts() {
         <Panel title="Destinations" testId="alerts-config">
           <div className="space-y-3">
             <Button data-testid="alerts-slack-connect-button" className="w-full" variant="secondary" onClick={connectSlack}>{d.config.slackConfigured ? "Reconnect Slack" : "Connect Slack (OAuth)"}</Button>
-            <Field label="or paste slack incoming webhook"><Input data-testid="alerts-slack-input" type="password" placeholder={d.config.slackConfigured ? "configured — paste to replace" : "https://hooks.slack.com/services/…"} value={slack} onChange={(e) => setSlack(e.target.value)} className="font-mono text-xs bg-[#04060A]" /></Field>
-            <Field label="pagerduty events v2 routing key"><Input data-testid="alerts-pagerduty-input" type="password" placeholder={d.config.pagerdutyConfigured ? "configured — paste to replace" : "32-char integration key"} value={pd} onChange={(e) => setPd(e.target.value)} className="font-mono text-xs bg-[#04060A]" /></Field>
+            <Field label="or paste slack incoming webhook"><Input data-testid="alerts-slack-input" type="password" placeholder={d.config.slackConfigured ? "configured — paste to replace" : "https://hooks.slack.com/services/…"} value={slack} onChange={(e) => setSlack(e.target.value)} className="font-mono text-xs bg-[var(--surface)]" /></Field>
+            <Field label="pagerduty events v2 routing key"><Input data-testid="alerts-pagerduty-input" type="password" placeholder={d.config.pagerdutyConfigured ? "configured — paste to replace" : "32-char integration key"} value={pd} onChange={(e) => setPd(e.target.value)} className="font-mono text-xs bg-[var(--surface)]" /></Field>
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-xs font-mono text-slate-300"><Switch data-testid="alerts-auto-switch" checked={d.config.autoDispatch} onCheckedChange={(c) => run("put", "/console/alerts/config", { autoDispatch: c })} />auto dispatch</label>
+              <label className="flex items-center gap-2 text-xs font-mono text-[var(--text-2)]"><Switch data-testid="alerts-auto-switch" checked={d.config.autoDispatch} onCheckedChange={(c) => run("put", "/console/alerts/config", { autoDispatch: c })} />auto dispatch</label>
               <Button data-testid="alerts-save-config-button" size="sm" onClick={saveCfg}>Save</Button>
             </div>
-            {live && <Button data-testid="alerts-clear-config-button" size="sm" variant="ghost" className="text-[#FF3366]" onClick={() => run("put", "/console/alerts/config", { slackWebhookUrl: "", pagerdutyRoutingKey: "" }, "Destinations cleared")}>Clear destinations</Button>}
-            <p className="text-[11px] text-slate-500 font-mono leading-5">Without destinations every notification is routed and logged as dry_run. critical → pagerduty-critical · warning → slack-platform</p>
+            {live && <Button data-testid="alerts-clear-config-button" size="sm" variant="ghost" className="text-[var(--bad)]" onClick={() => run("put", "/console/alerts/config", { slackWebhookUrl: "", pagerdutyRoutingKey: "" }, "Destinations cleared")}>Clear destinations</Button>}
+            <p className="text-[11px] text-[var(--text-muted)] font-mono leading-5">Without destinations every notification is routed and logged as dry_run. critical → pagerduty-critical · warning → slack-platform</p>
           </div>
         </Panel>
         <Panel title="Alert Rules" className="lg:col-span-2" testId="alerts-rules">
@@ -95,12 +97,12 @@ export default function Alerts() {
       </div>
       <Panel title="Delivery Log" testId="alerts-delivery-log" right={<Pill tone="info">{d.deliveries.length}</Pill>}>
         <div className="terminal p-3 font-mono text-[11px] max-h-80 overflow-auto scroll-thin space-y-1">
-          {d.deliveries.length === 0 && <div className="text-slate-600">no notifications yet — state changes (firing/resolved) are delivered once</div>}
+          {d.deliveries.length === 0 && <div className="text-[var(--text-muted)]">no notifications yet — state changes (firing/resolved) are delivered once</div>}
           {d.deliveries.map((x) => (
             <div key={x.id}>
-              <span className="text-slate-600">{x.sentAt.slice(11, 19)}</span>{" "}
-              <span style={{ color: RESULT_COLOR[x.result] || "#FFB300" }}>{x.result}</span>{" "}
-              <span className="text-cyan-300">{x.channel}/{x.receiver}</span> <span className="text-slate-300">{x.summary}</span> <span className="text-slate-600">{x.detail}{x.test ? " · test" : ""}</span>
+              <span className="text-[var(--text-muted)]">{x.sentAt.slice(11, 19)}</span>{" "}
+              <span style={{ color: RESULT_COLOR[x.result] || "var(--warn)" }}>{x.result}</span>{" "}
+              <span className="text-[var(--brand)]">{x.channel}/{x.receiver}</span> <span className="text-[var(--text-2)]">{x.summary}</span> <span className="text-[var(--text-muted)]">{x.detail}{x.test ? " · test" : ""}</span>
             </div>
           ))}
         </div>

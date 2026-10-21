@@ -1,58 +1,93 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Activity, BellRing, Boxes, Hourglass, Network, CalendarClock, FileSignature, FlaskConical, GitBranch, Inbox, KeyRound, Link2, Lock, Rocket, Undo2 } from "lucide-react";
-import { Dot, useLoad } from "@/components/kit";
+import { Activity, BellRing, Boxes, CalendarClock, FileSignature, FlaskConical, Hexagon, Hourglass, Inbox, KeyRound, Link2, Lock, Moon, Network, Rocket, Sun, Undo2 } from "lucide-react";
+import { Dot, ThemeProvider, useLoad, useTheme } from "@/components/kit";
 
-const NAV = [
-  ["/", "Overview", Boxes],
-  ["/fleet", "Validator Fleet", Network],
-  ["/versions", "Required Versions", CalendarClock],
-  ["/upgrades", "Upgrade Countdown", Hourglass],
-  ["/policies", "Signed Policies", FileSignature],
-  ["/keys", "Signing Keys", KeyRound],
-  ["/locks", "Locks & Fencing", Lock],
-  ["/audit", "Audit Chain", Link2],
-  ["/outbox", "Outbox", Inbox],
-  ["/metrics", "Metrics & SLO", Activity],
-  ["/alerts", "Alert Delivery", BellRing],
-  ["/rollbacks", "Rollbacks", Undo2],
-  ["/tests", "Test Runner", FlaskConical],
-  ["/readiness", "Readiness Gate", Rocket],
+const GROUPS = [
+  ["Public", [["/", "Overview", Boxes], ["/fleet", "Validator Fleet", Network], ["/upgrades", "Upgrade Countdown", Hourglass]]],
+  ["Operator", [
+    ["/versions", "Required Versions", CalendarClock], ["/policies", "Signed Policies", FileSignature], ["/keys", "Signing Keys", KeyRound],
+    ["/locks", "Locks & Fencing", Lock], ["/audit", "Audit Chain", Link2], ["/outbox", "Outbox", Inbox], ["/metrics", "Metrics & SLO", Activity],
+    ["/alerts", "Alert Delivery", BellRing], ["/rollbacks", "Rollbacks", Undo2], ["/tests", "Test Runner", FlaskConical], ["/readiness", "Readiness Gate", Rocket]]],
 ];
+const ALL = GROUPS.flatMap(([, items]) => items);
+const tid = (label) => `nav-${label.toLowerCase().replace(/[^a-z]+/g, "-")}`;
+
+const ThemeToggle = () => {
+  const { theme, toggle } = useTheme();
+  return (
+    <button data-testid="theme-toggle" onClick={toggle} aria-label="Toggle theme"
+      className="w-9 h-9 grid place-items-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[var(--text-2)] hover:text-[var(--text)] hover:border-[var(--line-strong)] transition-colors">
+      {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+    </button>
+  );
+};
+
+const NavItem = ([to, label, Icon]) => (
+  <NavLink key={to} to={to} end={to === "/"} data-testid={tid(label)}
+    className={({ isActive }) => `flex items-center gap-3 mx-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150 ${isActive ? "bg-[var(--brand-subtle)] text-[var(--brand)] font-semibold" : "text-[var(--text-2)] hover:text-[var(--text)] hover:bg-[var(--surface-hover)]"}`}>
+    <Icon className="w-4 h-4" />{label}
+  </NavLink>
+);
+
+function Sidebar({ ov }) {
+  const v = ov?.validator;
+  return (
+    <aside className="w-64 shrink-0 border-r border-[var(--line)] bg-[var(--surface)] sticky top-0 h-screen hidden md:flex flex-col z-10">
+      <div className="px-6 py-6 flex items-center gap-2.5">
+        <span className="w-8 h-8 rounded-lg bg-[var(--brand)] grid place-items-center"><Hexagon className="w-4 h-4 text-white" /></span>
+        <div>
+          <div className="font-heading text-lg font-bold tracking-tight leading-none text-[var(--text)]">Frasberg</div>
+          <div className="text-[11px] text-[var(--text-muted)] mt-1">Mainnet validator</div>
+        </div>
+      </div>
+      <nav className="flex-1 overflow-y-auto scroll-thin pb-4 space-y-6">
+        {GROUPS.map(([g, items]) => (
+          <div key={g} data-testid={`nav-group-${g.toLowerCase()}`}>
+            <div className="px-6 mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{g}</div>
+            <div className="space-y-0.5">{items.map(NavItem)}</div>
+          </div>
+        ))}
+      </nav>
+      <div className="m-3 p-3 rounded-xl bg-[var(--surface-2)] text-xs space-y-1" data-testid="sidebar-validator-identity">
+        <div className="flex items-center gap-2 font-semibold text-[var(--text)]"><Dot tone={ov?.compliance?.healthy ? "ok" : "bad"} /><span className="font-mono">{v?.validatorId || "…"}</span></div>
+        <div className="text-[var(--text-muted)]">v{v?.validatorVersion} · luchii {v?.luchiiVersion} · epoch {v?.epoch}</div>
+        {ov?.settings?.safeMode && <div className="text-[var(--bad)] font-semibold">Safe mode</div>}
+      </div>
+    </aside>
+  );
+}
+
+function Topbar({ ov }) {
+  const healthy = ov?.compliance?.healthy;
+  return (
+    <header className="sticky top-0 z-20 bg-[var(--bg)]/85 backdrop-blur-md border-b border-[var(--line)]">
+      <div className="px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between gap-3 max-w-[1440px]">
+        <div className="flex items-center gap-2 text-sm text-[var(--text-2)]" data-testid="topbar-network-status">
+          <Dot tone={healthy ? "ok" : "bad"} /><span className="font-medium text-[var(--text)]">Frasberg Mainnet</span>
+          <span className="hidden sm:inline text-[var(--text-muted)]">· {healthy ? "validator healthy" : "attention needed"}</span>
+        </div>
+        <ThemeToggle />
+      </div>
+      <div className="md:hidden flex gap-2 overflow-x-auto px-3 pb-3">
+        {ALL.map(([to, label]) => (
+          <NavLink key={to} to={to} end={to === "/"} className={({ isActive }) => `text-xs whitespace-nowrap px-3 py-1.5 rounded-full border ${isActive ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--brand-subtle)]" : "border-[var(--line)] text-[var(--text-2)] hover:text-[var(--text)]"}`}>{label}</NavLink>
+        ))}
+      </div>
+    </header>
+  );
+}
 
 export default function Shell() {
   const [ov] = useLoad("/console/overview");
-  const v = ov?.validator;
   return (
-    <div className="min-h-screen bg-[#07090E] grid-bg noise flex">
-      <aside className="w-64 shrink-0 border-r border-[#1E2638] bg-[#07090E]/95 backdrop-blur-xl sticky top-0 h-screen hidden md:flex flex-col z-10">
-        <div className="px-5 py-6 border-b border-[#1E2638]">
-          <div className="flex items-center gap-2">
-            <GitBranch className="w-5 h-5 text-cyan-400" />
-            <span className="font-heading text-xl font-extrabold tracking-tight">FRASBERG</span>
-          </div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-slate-500 mt-1">Mainnet Validator</div>
-        </div>
-        <nav className="flex-1 overflow-y-auto scroll-thin py-3">
-          {NAV.map(([to, label, Icon]) => (
-            <NavLink key={to} to={to} end={to === "/"} data-testid={`nav-${label.toLowerCase().replace(/[^a-z]+/g, "-")}`}
-              className={({ isActive }) => `flex items-center gap-3 px-5 py-2.5 text-sm border-l-2 transition-colors duration-200 ${isActive ? "border-cyan-400 bg-[#0F131D] text-cyan-300" : "border-transparent text-slate-400 hover:text-slate-100 hover:bg-[#0F131D]/60"}`}>
-              <Icon className="w-4 h-4" />{label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="p-5 border-t border-[#1E2638] font-mono text-[11px] space-y-1.5" data-testid="sidebar-validator-identity">
-          <div className="flex items-center gap-2 text-slate-300"><Dot tone={ov?.compliance?.healthy ? "ok" : "bad"} />{v?.validatorId || "…"}</div>
-          <div className="text-slate-500">v{v?.validatorVersion} · luchii {v?.luchiiVersion}</div>
-          <div className="text-slate-500">epoch {v?.epoch} · {v?.channel}</div>
-          {ov?.settings?.safeMode && <div className="text-[#FF3366]">SAFE MODE</div>}
-        </div>
-      </aside>
-      <main className="flex-1 min-w-0 relative z-[2]">
-        <div className="md:hidden flex gap-2 overflow-x-auto p-3 border-b border-[#1E2638]">
-          {NAV.map(([to, label]) => <NavLink key={to} to={to} end={to === "/"} className="font-mono text-[11px] whitespace-nowrap px-2 py-1 border border-[#1E2638] rounded-sm text-slate-300">{label}</NavLink>)}
-        </div>
-        <div className="p-4 sm:p-6 lg:p-10 max-w-[1500px]"><Outlet /></div>
-      </main>
-    </div>
+    <ThemeProvider>
+      <div className="min-h-screen bg-[var(--bg)] flex text-[var(--text)]">
+        <Sidebar ov={ov} />
+        <main className="flex-1 min-w-0">
+          <Topbar ov={ov} />
+          <div className="p-4 sm:p-6 lg:p-10 max-w-[1440px]"><Outlet /></div>
+        </main>
+      </div>
+    </ThemeProvider>
   );
 }

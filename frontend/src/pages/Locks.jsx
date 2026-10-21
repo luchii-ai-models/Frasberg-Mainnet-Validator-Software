@@ -45,7 +45,7 @@ export default function Locks() {
         <Panel title="Lock Operations" testId="lock-ops">
           <div className="grid grid-cols-2 gap-3">
             {["name", "owner", "ttlMs", "token"].map((k) => (
-              <Field key={k} label={k}><Input data-testid={`lock-input-${k}`} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} className="font-mono text-xs bg-[#04060A]" /></Field>
+              <Field key={k} label={k}><Input data-testid={`lock-input-${k}`} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} className="font-mono text-xs bg-[var(--surface)]" /></Field>
             ))}
           </div>
           <div className="flex flex-wrap gap-2 mt-4">
@@ -62,8 +62,8 @@ export default function Locks() {
         </Panel>
         <Panel title="Operation Log" testId="lock-log">
           <div className="terminal p-3 font-mono text-[11px] h-64 overflow-auto scroll-thin space-y-1">
-            {log.length === 0 && <div className="text-slate-600">no operations yet</div>}
-            {log.map((l, i) => <div key={i}><span className="text-slate-600">{l.t}</span> <span className="text-cyan-300">{l.op}</span> <span className="text-slate-400">{l.owner}</span> <span className="text-emerald-300">{l.result}</span></div>)}
+            {log.length === 0 && <div className="text-[var(--text-muted)]">no operations yet</div>}
+            {log.map((l, i) => <div key={i}><span className="text-[var(--text-muted)]">{l.t}</span> <span className="text-[var(--brand)]">{l.op}</span> <span className="text-[var(--text-2)]">{l.owner}</span> <span className="text-[var(--ok)]">{l.result}</span></div>)}
           </div>
         </Panel>
       </div>

@@ -1,77 +1,200 @@
 {
-  "project_name": "Frasberg Mainnet Validator Software Console",
-  "app_type": "dashboard",
-  "theme": "dark",
-  "archetype": "THE PERFORMANCE PRO (Tactical Obsidian & Cyber Cryptographic)",
-  "typography": {
-    "heading_font": "Cabinet Grotesk, Outfit, sans-serif",
-    "body_font": "Plus Jakarta Sans, sans-serif",
-    "mono_font": "JetBrains Mono, monospace",
-    "hierarchy": {
-      "h1": "text-3xl sm:text-4xl font-bold tracking-tight font-heading",
-      "h2": "text-xl sm:text-2xl font-semibold tracking-tight font-heading",
-      "h3": "text-lg font-medium font-heading",
-      "body": "text-sm text-slate-300 font-body leading-relaxed",
-      "code_mono": "font-mono text-xs tracking-wide uppercase text-cyan-400"
+  "project_title": "Frasberg Mainnet Validator Software Console Design System",
+  "theme_strategy": {
+    "default": "light",
+    "toggle_mechanism": "[data-theme='dark'] or .dark class on <html> element",
+    "design_archetype": "Swiss & Precision Modern Dashboard (Clean, Calmer, High White-space)",
+    "aesthetic_goals": [
+      "De-clutter interface by replacing harsh gridlines and noise overlays with soft, structural surfaces",
+      "Establish high visual contrast and calm readability with ample breathing space",
+      "Restrain JetBrains Mono usage strictly to hash, key, address, and terminal/log outputs",
+      "Establish a dual-section navigation model split into 'Public' and 'Operator' roles"
+    ]
+  },
+  "color_palette": {
+    "light_mode_variables": {
+      "--bg": "#F8FAFC",
+      "--surface": "#FFFFFF",
+      "--surface-2": "#F1F5F9",
+      "--surface-hover": "#E2E8F0",
+      "--border": "#E2E8F0",
+      "--border-strong": "#CBD5E1",
+      "--text": "#0F172A",
+      "--text-2": "#475569",
+      "--text-muted": "#64748B",
+      "--primary": "#2563EB",
+      "--primary-hover": "#1D4ED8",
+      "--primary-subtle": "#EFF6FF",
+      "--ok": "#10B981",
+      "--ok-bg": "#ECFDF5",
+      "--ok-border": "#A7F3D0",
+      "--warn": "#F59E0B",
+      "--warn-bg": "#FFFBEB",
+      "--warn-border": "#FDE68A",
+      "--bad": "#EF4444",
+      "--bad-bg": "#FEF2F2",
+      "--bad-border": "#FECACA",
+      "--info": "#0EA5E9",
+      "--info-bg": "#F0F9FF",
+      "--info-border": "#BAE6FD",
+      "--violet": "#8B5CF6",
+      "--violet-bg": "#F5F3FF",
+      "--violet-border": "#DDD6FE",
+      "--code-bg": "#0F172A",
+      "--code-text": "#F8FAFC",
+      "--shadow-sm": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+      "--shadow-md": "0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05)",
+      "--shadow-lg": "0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04)"
     },
-    "forbidden_fonts": ["space grotesk", "inter for headings"]
+    "dark_mode_variables": {
+      "--bg": "#0B0F17",
+      "--surface": "#131A27",
+      "--surface-2": "#1E293B",
+      "--surface-hover": "#26334A",
+      "--border": "#212E42",
+      "--border-strong": "#334155",
+      "--text": "#F8FAFC",
+      "--text-2": "#94A3B8",
+      "--text-muted": "#64748B",
+      "--primary": "#3B82F6",
+      "--primary-hover": "#60A5FA",
+      "--primary-subtle": "rgba(59, 130, 246, 0.12)",
+      "--ok": "#10B981",
+      "--ok-bg": "rgba(16, 185, 129, 0.12)",
+      "--ok-border": "rgba(16, 185, 129, 0.28)",
+      "--warn": "#F59E0B",
+      "--warn-bg": "rgba(245, 158, 11, 0.12)",
+      "--warn-border": "rgba(245, 158, 11, 0.28)",
+      "--bad": "#EF4444",
+      "--bad-bg": "rgba(239, 68, 68, 0.12)",
+      "--bad-border": "rgba(239, 68, 68, 0.28)",
+      "--info": "#38BDF8",
+      "--info-bg": "rgba(56, 189, 248, 0.12)",
+      "--info-border": "rgba(56, 189, 248, 0.28)",
+      "--violet": "#A78BFA",
+      "--violet-bg": "rgba(167, 139, 250, 0.12)",
+      "--violet-border": "rgba(167, 139, 250, 0.28)",
+      "--code-bg": "#070A10",
+      "--code-text": "#E2E8F0",
+      "--shadow-sm": "0 1px 2px 0 rgb(0 0 0 / 0.3)",
+      "--shadow-md": "0 4px 6px -1px rgb(0 0 0 / 0.4)",
+      "--shadow-lg": "0 10px 15px -3px rgb(0 0 0 / 0.5)"
+    },
+    "chart_color_tokens": {
+      "ok_line": "var(--ok)",
+      "primary_line": "var(--primary)",
+      "warn_line": "var(--warn)",
+      "bad_line": "var(--bad)",
+      "info_line": "var(--info)",
+      "violet_line": "var(--violet)"
+    }
   },
-  "colors": {
-    "background": "#07090E",
-    "surface": "#0F131D",
-    "surface_hover": "#161B29",
-    "border": "#1E2638",
-    "border_active": "#2E3A54",
-    "primary": "#00F0FF",
-    "primary_dark": "#00B8C4",
-    "accent_green": "#00E676",
-    "accent_amber": "#FFB300",
-    "accent_red": "#FF3366",
-    "accent_purple": "#8B5CF6",
-    "text_primary": "#F8FAFC",
-    "text_secondary": "#94A3B8",
-    "text_muted": "#64748B",
-    "forbidden_colors": ["#1B93A4", "pure #000000 background", "heavy full-screen gradients"]
+  "typography": {
+    "heading_font": "'Cabinet Grotesk', 'Outfit', sans-serif",
+    "body_font": "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+    "mono_font": "'JetBrains Mono', monospace",
+    "font_policy": [
+      "Use 'Plus Jakarta Sans' for 85% of standard text, labels, nav links, status titles, and table cells",
+      "Use 'Cabinet Grotesk' or 'Outfit' (font-heading) strictly for Page Titles (H1, H2) and Hero Stat numbers",
+      "Use 'JetBrains Mono' strictly for hex values, validator keys, block heights, IP addresses, JSON view, terminal outputs, and system logs",
+      "Avoid all-caps tracking-widest text over-saturation on standard labels"
+    ],
+    "text_sizes": {
+      "page_title": "text-2xl font-bold font-heading text-[var(--text)] tracking-tight",
+      "section_title": "text-lg font-semibold font-heading text-[var(--text)]",
+      "stat_value": "text-2xl sm:text-3xl font-bold font-heading text-[var(--text)] tracking-tight",
+      "body_text": "text-sm text-[var(--text-2)] leading-relaxed",
+      "label_text": "text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider",
+      "code_snippet": "font-mono text-xs px-2 py-1 rounded bg-[var(--surface-2)] text-[var(--text)]"
+    }
   },
-  "layout": {
-    "grid_strategy": "MODE B: High Density Grid (1px Grid Borders & Bento Widgets)",
-    "container_padding": "p-4 sm:p-6 lg:p-8",
-    "gap": "gap-4 sm:gap-6",
-    "card_style": "bg-[#0F131D] border border-[#1E2638] rounded-md p-5 shadow-inner hover:border-[#2E3A54] transition-colors"
+  "layout_and_navigation": {
+    "sidebar_structure": {
+      "width": "w-64",
+      "container_style": "bg-[var(--surface)] border-r border-[var(--border)] p-4 flex flex-col justify-between min-h-screen",
+      "group_1_public": {
+        "title": "PUBLIC CONSOLE",
+        "items": [
+          {"id": "overview", "label": "Overview & Health", "icon": "LayoutDashboard"},
+          {"id": "fleet", "label": "Validator Fleet (9 Nodes)", "icon": "Server"},
+          {"id": "upgrades", "label": "Upgrades & Countdown", "icon": "Sparkles"}
+        ]
+      },
+      "group_2_operator": {
+        "title": "OPERATOR CONSOLE",
+        "items": [
+          {"id": "signing", "label": "Signers, Keys & Locks", "icon": "KeyRound"},
+          {"id": "audit", "label": "Audit Chain", "icon": "ShieldCheck"},
+          {"id": "outbox", "label": "Outbox & Alerts", "icon": "Bell"},
+          {"id": "metrics", "label": "Metrics & SLO", "icon": "Activity"},
+          {"id": "runner", "label": "Test Runner", "icon": "Terminal"},
+          {"id": "readiness", "label": "Readiness Gate", "icon": "CheckCircle2"}
+        ]
+      },
+      "nav_item_active": "bg-[var(--primary-subtle)] text-[var(--primary)] font-medium rounded-lg px-3 py-2 text-sm flex items-center gap-2.5 transition-all border-l-4 border-[var(--primary)]",
+      "nav_item_inactive": "text-[var(--text-2)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)] rounded-lg px-3 py-2 text-sm flex items-center gap-2.5 transition-all"
+    },
+    "header_bar": {
+      "style": "sticky top-0 z-40 bg-[var(--surface)]/90 backdrop-blur-md border-b border-[var(--border)] px-6 py-3 flex items-center justify-between shadow-sm",
+      "elements": [
+        "Network Status Badge (Mainnet Active)",
+        "Global Sync Height Indicator",
+        "Theme Toggle Button (Sun/Moon with data-testid='theme-toggle')",
+        "Quick Action Operator Lock Indicator"
+      ]
+    },
+    "page_container": {
+      "style": "p-6 sm:p-8 max-w-7xl mx-auto space-y-6"
+    }
   },
-  "visual_enhancers": {
-    "borders": "1px crisp solid borders with subtle inner glow for active states",
-    "status_indicators": "Pulsing micro-dots (emerald for operational, amber for warning, red for degraded)",
-    "terminal_boxes": "Deep black #04060A container with crisp cyan/emerald JetBrains Mono logs",
-    "charts": "Accessible high-contrast Recharts/Shadcn area & bar charts with zero blur clutter"
+  "component_styling_rules": {
+    "cards_and_panels": {
+      "standard_panel": "bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 shadow-[var(--shadow-sm)] hover:border-[var(--border-strong)] transition-all duration-200",
+      "flat_panel": "bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-4",
+      "hero_stat_panel": "bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-[var(--shadow-sm)] relative overflow-hidden"
+    },
+    "status_pills": {
+      "ok": "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--ok-bg)] text-[var(--ok)] border border-[var(--ok-border)]",
+      "warn": "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-border)]",
+      "bad": "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--bad-bg)] text-[var(--bad)] border border-[var(--bad-border)]",
+      "info": "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--info-bg)] text-[var(--info)] border border-[var(--info-border)]",
+      "violet": "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--violet-bg)] text-[var(--violet)] border border-[var(--violet-border)]"
+    },
+    "buttons": {
+      "primary": "bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors shadow-sm focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2",
+      "secondary": "bg-[var(--surface-2)] hover:bg-[var(--surface-hover)] text-[var(--text)] border border-[var(--border)] font-medium text-sm px-4 py-2 rounded-lg transition-colors",
+      "danger": "bg-[var(--bad)] hover:opacity-90 text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors"
+    },
+    "tables": {
+      "container": "overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-sm)]",
+      "header_row": "bg-[var(--surface-2)] border-b border-[var(--border)] text-left text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider",
+      "body_row": "border-b border-[var(--border)] hover:bg-[var(--surface-hover)]/50 transition-colors text-sm text-[var(--text)]",
+      "mono_cell": "font-mono text-xs text-[var(--text)]"
+    }
   },
-  "key_features_layout": [
-    "Overview & Live Status Hub (Version: fras_val_001, v6.4.1, Luchii v4.2.0, Epoch 900, 5% Commission)",
-    "Required Versions Schedule (Epochs 100/200/300/400/900 status matrix)",
-    "Ed25519 Canonical Policy Signing & Verification Console",
-    "Signing Key Lifecycle Matrix (active, rotating, retired, revoked)",
-    "Immutable Hash-Chained Audit Log Explorer with Verifier & Tamper Simulator",
-    "Audit Outbox Engine (Queue, Retry, Dead-Letter, Replay controls)",
-    "Distributed Rotation Locks & Fencing Tokens Inspector",
-    "Prometheus-Style Metrics & SLO Burn Rate Gauges (Uptime, Vote %, Missed Blocks, API Avail)",
-    "Rollback Approval Gates (L1-L4 Sign-off Workflow)",
-    "Mainnet Readiness Gate (GO/NO-GO Evaluator)",
-    "Built-in Test Runner UI (Property, Tamper, Lock Race & Chaos Scenarios)"
-  ],
-  "components_and_ui": {
-    "toasts": "Sonner from @/components/ui/sonner",
-    "shadcn_primitives": ["Badge", "Button", "Card", "Dialog", "DropdownMenu", "Input", "Progress", "Select", "Table", "Tabs", "Tooltip"],
-    "icons": "Lucide React icons or Phosphor icons",
-    "testing_rule": "ALL interactive buttons, inputs, tabs, modal triggers, and status panels MUST include explicit kebab-case data-testid attributes (e.g. data-testid='policy-sign-button', data-testid='audit-tamper-toggle')"
-  },
-  "image_urls": {
-    "server_infrastructure": "https://images.pexels.com/photos/37605913/pexels-photo-37605913.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+  "testing_and_accessibility": {
+    "data_testid_policy": "All interactive elements (buttons, nav items, inputs, toggles, filter dropdowns) and primary key metric display blocks MUST include a explicit data-testid attribute in kebab-case.",
+    "required_test_ids": [
+      "theme-toggle",
+      "nav-public-overview",
+      "nav-public-fleet",
+      "nav-public-upgrades",
+      "nav-operator-signing",
+      "nav-operator-audit",
+      "nav-operator-outbox",
+      "nav-operator-metrics",
+      "nav-operator-runner",
+      "nav-operator-readiness",
+      "fleet-status-table",
+      "upgrade-countdown-timer",
+      "audit-chain-log"
+    ]
   },
   "instructions_to_main_agent": [
-    "Implement open validator console UI without login required per user choice.",
-    "Ensure MongoDB data models and live FastAPI endpoints under /v1/ validator namespace synchronize seamlessly.",
-    "Include live interactive test runner inside the console for immediate execution of property, tamper, lock race, and chaos tests.",
-    "Maintain strict high contrast dark-mode cyberpunk aesthetic with clear visual telemetry and zero cramped spacing.",
-    "Verify all key UI actions have data-testid attributes attached for automated compliance checks."
+    "Inject the CSS variables defined under 'light_mode_variables' into the :root selector and 'dark_mode_variables' into '[data-theme=\"dark\"], .dark' inside index.css",
+    "Set light mode as default, with a header toggle button updating the data-theme attribute on document.documentElement and persisting in localStorage",
+    "Restructure the sidebar navigation into two clear, visually grouped headers: 'Public' and 'Operator'",
+    "Refactor hardcoded hex colors across all components to use var(--surface), var(--border), var(--text), var(--ok), var(--warn), var(--bad), etc.",
+    "Ensure all tables, cards, stat blocks, buttons, and nav links render cleanly in both light and dark modes with high legibility and appropriate padding."
   ]
 }

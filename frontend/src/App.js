@@ -38,7 +38,7 @@ function App() {
           <Route path="readiness" element={<Readiness />} />
         </Route>
       </Routes>
-      <Toaster theme="dark" position="bottom-right" />
+      <Toaster position="bottom-right" />
     </BrowserRouter>
   );
 }

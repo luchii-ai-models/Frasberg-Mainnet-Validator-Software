@@ -262,6 +262,12 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
         return {"slackWebhookUrl": c.get("slackWebhookUrl"), "pagerdutyRoutingKey": c.get("pagerdutyRoutingKey"), "autoDispatch": c.get("autoDispatch", True),
                 "slackChannel": c.get("slackChannel"), **{k: c.get(k, v) for k, v in QUIET_DEFAULTS.items()}}
 
+    async def routing_for(vid):
+        r = await db.validator_routing.find_one({"validatorId": vid}) or {}
+        mid = r.get("slackMemberId")
+        mention = (f"<!subteam^{mid}>" if mid.startswith("S") else f"<@{mid}>") if mid else ""
+        return {"mention": mention, "webhook": r.get("slackWebhookUrl")}
+
     async def log_delivery(alert, status, receiver, channel, result, detail, summary, test=False):
         doc = {"id": str(uuid.uuid4()), "alert": alert["name"], "status": status, "severity": alert["severity"], "service": alert["service"],
                "receiver": receiver, "channel": channel, "result": result, "detail": detail, "summary": summary, "test": test, "sentAt": iso()}
@@ -293,8 +299,19 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
                     result, detail = ("delivered" if r.status_code < 300 else "failed"), f"HTTP {r.status_code}"
         except httpx.HTTPError as e:
             result, detail = "failed", type(e).__name__
-        if channel == "slack":
-            result, detail = await post_slack(cfg, f":rotating_light: {summary}\nrunbook: https://runbooks.frasberg.com/{alert['name']}")
+        if channel == "slack" or alert.get("validatorId"):
+            pd = (result, detail) if channel == "pagerduty" else None
+            text = f":rotating_light: {summary}\nrunbook: https://runbooks.frasberg.com/{alert['name']}"
+            target = cfg
+            if alert.get("validatorId"):
+                r = await routing_for(alert["validatorId"])
+                text = f"{r['mention']} {text}".strip()
+                if r["webhook"]:
+                    target = {**cfg, "slackWebhookUrl": r["webhook"]}
+            result, detail = await post_slack(target, text)
+            if pd:
+                result = "delivered" if "delivered" in (pd[0], result) else "failed" if "failed" in (pd[0], result) else "dry_run"
+                detail = f"pagerduty {pd[0]} · slack {detail}"
         return await log_delivery(alert, status, receiver, channel, result, detail, summary, test)
 
     async def flush_digest(cfg):
@@ -326,16 +343,24 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
             out.append(await deliver(a, "escalation", receiver, channel, cfg))
         return out
 
+    sources = []
+
+    async def all_alerts():
+        alerts = list((await metric_snapshot())["alerts"])
+        for src in sources:
+            alerts += await src()
+        return alerts
+
     async def dispatch():
         cfg = await get_config()
-        m = await metric_snapshot()
-        alerts = m["alerts"]
+        alerts = await all_alerts()
         firing = [a for a in alerts if a["firing"]]
         sent = []
         for a in alerts:
             inhibited_by = next((s["name"] for s in firing if s["name"] != a["name"] and core.is_inhibited(s["name"], a["name"], {"environment": "prod"})), None)
             prev = await alert_state.find_one({"_id": a["name"]}) or {"firing": False, "notified": False}
-            if a["firing"] == prev["firing"]:
+            regraded = a["firing"] and prev["firing"] and prev.get("severity", a["severity"]) != a["severity"]
+            if a["firing"] == prev["firing"] and not regraded:
                 continue
             notify = (not inhibited_by) if a["firing"] else prev.get("notified", False)
             status = "firing" if a["firing"] else "resolved"
@@ -350,7 +375,7 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
                     sent.append(await log_delivery(a, status, receiver, channel, "suppressed", "quiet hours", summary))
                 notify = notify and cfg["quietMode"] == "digest"
             await alert_state.update_one({"_id": a["name"]}, {"$set": {"firing": a["firing"], "since": iso(), "inhibitedBy": inhibited_by,
-                                                                    "notified": a["firing"] and notify, "acknowledged": False, "acknowledgedAt": None, "escalations": 0,
+                                                                    "notified": a["firing"] and notify, "severity": a["severity"], "acknowledged": False, "acknowledgedAt": None, "escalations": 0,
                                                                     "lastPagedAt": iso() if a["firing"] and notify else None}}, upsert=True)
             if notify and not held:
                 sent.append(await deliver(a, status, receiver, channel, cfg))
@@ -363,12 +388,13 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
 
     @api.get("/console/alerts")
     async def alerts_state():
-        m = await metric_snapshot()
         states = {s["_id"]: s async for s in alert_state.find({})}
         rows = []
-        for a in m["alerts"]:
+        for a in await all_alerts():
             receiver, channel = route_alert(a)
             st = states.get(a["name"], {})
+            if a.get("validatorId") and not a["firing"] and not st.get("firing"):
+                continue
             rows.append({**a, "receiver": receiver, "channel": channel, "since": st.get("since"), "inhibitedBy": st.get("inhibitedBy"),
                          "acknowledged": st.get("acknowledged", False), "escalations": st.get("escalations", 0), "notified": st.get("notified", False)})
         cfg = await get_config()
@@ -469,4 +495,4 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
         await epoch_clock()
         asyncio.create_task(loop())
 
-    return seed, {"get_config": get_config, "post_slack": post_slack, "archive_create": archive_create, "upgrades": upgrades}
+    return seed, {"get_config": get_config, "post_slack": post_slack, "routing_for": routing_for, "sources": sources, "archive_create": archive_create, "upgrades": upgrades}

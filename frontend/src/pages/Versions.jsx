@@ -18,20 +18,20 @@ export default function Versions() {
       <Panel title="Epoch Schedule" testId="schedule-table" className="mb-6">
         <Table>
           <TableHeader>
-            <TableRow>{["Epoch", "Core min", "Core max", "Recommended", "Luchii min", "Luchii max", "Channel", "Enforcement", "Signed by", "This validator"].map((h) => <TableHead key={h} className="font-mono text-[10px] uppercase tracking-widest">{h}</TableHead>)}</TableRow>
+            <TableRow>{["Epoch", "Core min", "Core max", "Recommended", "Luchii min", "Luchii max", "Channel", "Enforcement", "Signed by", "This validator"].map((h) => <TableHead key={h} className="text-xs font-semibold text-[var(--text-muted)]">{h}</TableHead>)}</TableRow>
           </TableHeader>
           <TableBody>
             {d.rows.map((r) => (
-              <TableRow key={r.epoch} data-testid={`schedule-row-${r.epoch}`} className={r === current ? "bg-cyan-400/5" : ""}>
-                <TableCell className="font-mono text-cyan-300">{r.epoch}{r === current && " ◂"}</TableCell>
+              <TableRow key={r.epoch} data-testid={`schedule-row-${r.epoch}`} className={r === current ? "bg-[var(--brand-subtle)]" : ""}>
+                <TableCell className="font-mono text-[var(--brand)]">{r.epoch}{r === current && " ◂"}</TableCell>
                 <TableCell className="font-mono">{r.validator.minimum}</TableCell>
                 <TableCell className="font-mono">{r.validator.maximum}</TableCell>
                 <TableCell className="font-mono">{r.validator.recommended}</TableCell>
                 <TableCell className="font-mono">{r.luchii.minimum}</TableCell>
                 <TableCell className="font-mono">{r.luchii.maximum || "—"}</TableCell>
                 <TableCell><Pill tone="ok">{r.validator.channel}</Pill></TableCell>
-                <TableCell className="font-mono text-xs text-slate-400">{r.enforcement.startsEpoch} → grace {r.enforcement.graceEndsEpoch}</TableCell>
-                <TableCell className="font-mono text-xs text-slate-400">{r.signature?.keyId}</TableCell>
+                <TableCell className="font-mono text-xs text-[var(--text-2)]">{r.enforcement.startsEpoch} → grace {r.enforcement.graceEndsEpoch}</TableCell>
+                <TableCell className="font-mono text-xs text-[var(--text-2)]">{r.signature?.keyId}</TableCell>
                 <TableCell><Pill tone={statusTone(r.currentClass)}>{r.currentClass}</Pill></TableCell>
               </TableRow>
             ))}
@@ -44,11 +44,11 @@ export default function Versions() {
             <TableHeader><TableRow>{["Status", "Delegation", "Voting", "Rewards", "Warning"].map((h) => <TableHead key={h} className="font-mono text-[10px] uppercase">{h}</TableHead>)}</TableRow></TableHeader>
             <TableBody>
               {CLASSES.map(([s, ...rest]) => (
-                <TableRow key={s}><TableCell><Pill tone={statusTone(s)}>{s}</Pill></TableCell>{rest.map((x, i) => <TableCell key={i} className="text-sm text-slate-300">{x}</TableCell>)}</TableRow>
+                <TableRow key={s}><TableCell><Pill tone={statusTone(s)}>{s}</Pill></TableCell>{rest.map((x, i) => <TableCell key={i} className="text-sm text-[var(--text-2)]">{x}</TableCell>)}</TableRow>
               ))}
             </TableBody>
           </Table>
-          <div className="mt-4 text-xs text-slate-400 font-mono leading-6">
+          <div className="mt-4 text-xs text-[var(--text-2)] font-mono leading-6">
             MAJOR = consensus changes · MINOR = validator features · PATCH = bug fixes<br />
             Channels tracked explicitly: {d.channels.join(" / ")} — prereleases are never rejected globally.
           </div>
