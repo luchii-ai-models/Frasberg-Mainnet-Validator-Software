@@ -152,7 +152,7 @@ class TestAudit:
         codes = {}
         for m in ["payload", "link", "hash", "gap"]:
             codes[m] = S.post(f"{A}/console/audit/simulate-tamper", json={"mutation": m, "index": 2}).json()["result"]["code"]
-        assert codes["payload"] == "HASH_MISMATCH" and codes["link"] == "BROKEN_LINKAGE" and codes["gap"] == "SEQUENCE_GAP"
+        assert codes["payload"] in ("HASH_MISMATCH", "FIELD_MISMATCH") and codes["link"] == "BROKEN_LINKAGE" and codes["gap"] == "SEQUENCE_GAP"
         assert codes["hash"] in ("HASH_MISMATCH", "BROKEN_LINKAGE")
         assert S.get(f"{A}/console/audit/verify").json()["code"] == "CHAIN_VALID"
         assert S.post(f"{A}/console/audit/simulate-tamper", json={"mutation": "bogus"}).status_code in (400, 422)

@@ -15,8 +15,12 @@ function useSlackReturn(reload) {
   useEffect(() => {
     const s = params.get("slack");
     if (!s) return;
-    if (s === "connected") toast.success("Slack connected", { description: "Incoming webhook saved — warnings and nudges now go live" });
-    else toast.error("SLACK_OAUTH_FAILED", { description: params.get("reason") || "unknown error" });
+    const reason = params.get("reason") || "unknown error";
+    // defer: on a hard load (OAuth return) the <Toaster/> sibling subscribes after this effect runs
+    setTimeout(() => {
+      if (s === "connected") toast.success("Slack connected", { id: "slack-oauth", description: "Incoming webhook saved — warnings and nudges now go live" });
+      else toast.error("SLACK_OAUTH_FAILED", { id: "slack-oauth", description: reason });
+    }, 0);
     setParams({}, { replace: true });
     reload();
   }, [params, setParams, reload]);

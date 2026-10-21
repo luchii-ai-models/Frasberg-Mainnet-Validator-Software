@@ -32,11 +32,21 @@
 - Live Alert Delivery: Alertmanager-style routing (critical→PagerDuty, warning→Slack), inhibition, firing/resolved dedup, 60s auto-dispatch, delivery log; DRY-RUN until Slack webhook / PagerDuty routing key is saved on the Alerts page
 - Upgrade Countdown: new epoch 1000 requirement (core ≥6.4.0, luchii ≥4.2.0); timeline of 30-day notice → 14-day window → grace epoch with live countdown and fleet readiness (1 epoch = 10h demo clock)
 
+## Iteration 3 (2026-06)
+- Fleet Trend Charts (ops.py): 60s sampler → `fleet_samples`, 7-day seeded backfill with drift profiles; `/console/fleet/trends?range=1h|24h|7d`, drift/breach detection; Recharts multi-line chart with focus on Fleet page
+- Archive Schedule: daily in-app scheduler (configurable UTC time, min-age filter), atomic once-per-day claim, Run now, run history (`archive_runs`) on Audit page
+- Alert Quiet Hours: UTC window, digest (batch to one Slack message at window end) or suppress mode, critical always immediate, escalation re-page every N min until Ack; resolved only sent if firing was notified
+- Fleet Upgrade Nudges: per-validator Slack heads-up when upgrade window opens (deduped in `upgrade_nudges`), manual Nudge / Re-send on Upgrades page
+- Slack: real incoming-webhook delivery; "Connect Slack (OAuth)" via `/console/slack/oauth/start|callback` (SLACK_CLIENT_ID/SECRET in backend .env) or paste webhook. Redirect URL `<origin>/api/console/slack/oauth/callback` must be added in the Slack app's OAuth settings
+- Polish: AlertDialog confirm on fleet remove, inputs cleared on failed archive export/verify
+
 ## Notes / limitations
 - Mongo is standalone (no replica set): multi-doc transactions emulated via ordering + atomic single-doc ops
 - Event bus is SIMULATED in MongoDB; Ed25519 private keys stored in Mongo (demo — use KMS/HSM in production)
 
 ## Backlog
+- P1: Real PagerDuty key / Slack connected by user (currently DRY-RUN until connected)
+- P2: Per-operator Slack channels/mentions for nudges
 - P1: Multi-validator fleet view; WORM archive export of audit partitions
 - P1: Real Prometheus/Grafana push; Alertmanager webhook delivery
 - P2: Governance proposals/voting package; split selftests by suite

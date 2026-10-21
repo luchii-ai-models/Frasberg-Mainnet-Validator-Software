@@ -350,7 +350,7 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
                     sent.append(await log_delivery(a, status, receiver, channel, "suppressed", "quiet hours", summary))
                 notify = notify and cfg["quietMode"] == "digest"
             await alert_state.update_one({"_id": a["name"]}, {"$set": {"firing": a["firing"], "since": iso(), "inhibitedBy": inhibited_by,
-                                                                    "notified": a["firing"] and notify, "acknowledged": False,
+                                                                    "notified": a["firing"] and notify, "acknowledged": False, "acknowledgedAt": None, "escalations": 0,
                                                                     "lastPagedAt": iso() if a["firing"] and notify else None}}, upsert=True)
             if notify and not held:
                 sent.append(await deliver(a, status, receiver, channel, cfg))

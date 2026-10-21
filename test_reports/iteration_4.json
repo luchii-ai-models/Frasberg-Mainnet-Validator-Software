@@ -1,0 +1,47 @@
+{
+  "summary": "Tested the 4 new ops features (fleet trends, archive schedule, alert quiet hours/escalation/ack/digest, upgrade nudges, Slack OAuth start) end-to-end, plus regression. Backend: new tests/test_ops_api.py has 19 tests and all pass. The full suite passes 52/52 after two old tamper assertions were updated (see updated_files). The built-in runner gives 72/72. UI: every listed testid and flow works: trends chart (9 lines), range/metric tabs, drift focus (other lines dim to 0.15), remove AlertDialog cancel/confirm, schedule save/run/pause, quiet-hours save/enable/digest queued -> flush, critical Ack -> acked pill, Slack connect redirects to slack.com/oauth/v2/authorize with the right client_id/scope/redirect_uri, nudges send/resend with count incrementing. I fixed one real bug: the toast for /alerts?slack=connected never showed. Found 1 real backend bug: the archive schedule can run twice in one day.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PUT /api/console/audit/archive-schedule + maybe_run_schedule (ops.py ~L146-178)", "issue": "Schedule can run twice per day. Moving timeUtc to a later time today clears lastRunDate. Moving it back to an earlier time (already passed) then makes the loop run 'scheduled' again right away. Seen: two 'scheduled' runs on 2026-10-21 (12:23:28 and 12:24:28), both at 02:00. The panel also shows 'next <now> UTC' in that state.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "dispatch() extras.py L352", "issue": "alert_state.escalations is not reset when a new firing episode starts. The UI showed '×3 esc' on an alert that had just re-fired. Reset escalations:0 (and acknowledgedAt) in the $set on each firing transition."},
+      {"endpoint": "GET /api/console/fleet/trends", "issue": "fras_val_008 is breach=true in all ranges but drifting=true only in 7d. In 24h the change (uptime -0.03, vote -0.55, missed +0.38) is below the DRIFT thresholds because the drift profile is spread over 7 days. This may be by design; flagging because the request expected breach/drifting."},
+      {"endpoint": "POST /api/console/upgrades/1000/nudge", "issue": "Lagging set for epoch 1000 is 003, 004, 005, 006, not 008. 008 runs 6.4.0/4.2.0, which meets the minimum, and lagging uses compliance with frozen=False. This is consistent with fleetReady 5/9, so it is correct, but it differs from the review note."},
+      {"endpoint": "GET /api/console/slack/oauth/start", "issue": "origin accepts any https:// value and the callback redirects to it. Slack's registered redirect_uri limits the risk, but validate origin against an allowlist or the host header."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Alerts useSlackReturn", "issue": "FIXED by testing agent. On a hard load of /alerts?slack=connected (or slack=error) no toast showed. The Alerts effect runs before the <Toaster/> sibling (App.js L41) subscribes. After deferring with setTimeout it showed twice because StrictMode runs the effect twice, so a stable id 'slack-oauth' was added. Verified: exactly one toast and the query is cleared.", "selector": "[data-sonner-toast]", "priority": "MEDIUM"},
+      {"component": "QuietHours escalation-minutes-input", "issue": "Non-numeric input such as 'abc' saves as 0 (Number(x)||0), which silently turns escalation off. Use type=number with validation.", "selector": "[data-testid='escalation-minutes-input']", "priority": "LOW"},
+      {"component": "ArchiveSchedule older input", "issue": "Entering -5 shows the raw pydantic VALIDATION_ERROR JSON in the toast. Use type=number min=0 or a friendly message. The input does reset correctly.", "selector": "[data-testid='archive-schedule-older-input']", "priority": "LOW"},
+      {"component": "UpgradeNudges", "issue": "testid nudge-row-<validatorId> is duplicated across epochs (fras_val_005 has rows for 900 and 1000). Use nudge-row-<epoch>-<id>. Send/Re-send give no toast, so a deduped click ('0 sent') looks like nothing happened.", "selector": "[data-testid^='nudge-row-']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Fleet trends", "issues": ["The fleet-drift-count pill says 'N drifting' but counts drifting OR breach. With 24h it shows '1 drifting' while 008 is labelled 'breach'. Consider 'N flagged'."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_ops_api.py", "/app/backend/tests/test_extras_api.py", "/app/backend/tests/test_frasberg_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix the archive schedule double run: store lastRunAt and run only if lastRunAt < today's due time (or never clear lastRunDate on PUT). Make nextRunAt never show a past or now time.",
+    "Reset alert_state.escalations (and acknowledgedAt) at each new firing transition in dispatch().",
+    "Validate escalation-minutes and older-than inputs on the client (type=number) and show friendly 422 messages.",
+    "Make nudge-row testids unique per epoch and add a toast with the sent count for nudge/resend.",
+    "Optional: rename the drift-count pill to 'flagged'. Restrict OAuth origin to an allowlist."
+  ],
+  "critical_code_review_comments": [
+    "ops.archive_schedule_put: clearing lastRunDate whenever the new time is in the future loses today's run record. This is the root cause of the double run.",
+    "ops.backfill only runs if fleet_samples is empty. Validators added later have no history and deleted ones still have samples (harmless, since the series is filtered by the validators list in the UI).",
+    "extras.dispatch: in digest mode a warning held during quiet hours gets lastPagedAt set. This is harmless (escalation is critical-only) but noisy.",
+    "verify_audit_chain now returns FIELD_MISMATCH before HASH_MISMATCH when payload fields differ from the envelope. Old pytest assertions were updated to accept it."
+  ],
+  "updated_files": ["/app/backend/tests/test_ops_api.py (new)", "/app/backend/tests/test_extras_api.py (accept FIELD_MISMATCH)", "/app/backend/tests/test_frasberg_api.py (accept FIELD_MISMATCH)", "/app/frontend/src/pages/Alerts.jsx (deferred + deduped slack return toast)"],
+  "success_rate": {"backend": "100% (52/52 pytest, 72/72 built-in), 1 logic bug found by inspection + data", "frontend": "~95% (all flows work; toast bug fixed; minor UX issues)"},
+  "seed_data_creation": "No permanent seed data. Tests insert lock_samples with TEST:true (result=error) to fire the critical LockAvailabilityLow and delete them afterwards. fras_val_009 was deleted via the UI and re-registered with its seed values. Several archives/archive runs and nudge counts were added (audit-only, expected).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: REACT_APP_BACKEND_URL=<url> pytest /app/backend/tests/ -n0 -p no:cacheprovider. test_ops_api uses pymongo from backend/.env to insert TEST error lock samples and backdate alert_state.lastPagedAt for the escalation test. Its fixture turns autoDispatch off during quiet tests and restores it. Final state: quietEnabled=false, quiet 00:00-23:59 digest, escalation 5, autoDispatch on, no firing alerts, digestPending 0, archive schedule enabled 02:00 older=0, fleet 9 validators at seed, readiness GO. Container clock is 2026-10-21. Epoch 900 is in grace (auto nudges sent for 005/006). Epoch 1000 is in announcement.",
+  "rca of the issue": "Archive double run: PUT archive-schedule sets lastRunDate=None when the new timeUtc is later than now. A later PUT with an earlier time (02:00 < now) leaves lastRunDate None, so maybe_run_schedule sees t >= due and lastRunDate != today, claims it and runs a second 'scheduled' export the same day. Repro: PUT {timeUtc:'23:58'}, then PUT {timeUtc:'02:00'}, wait 60s, then GET archive-schedule shows a new 'scheduled' history row. Slack toast: Alerts effects run before the Toaster sibling's subscribe effect on first mount, and sonner drops toasts emitted before subscription. Fixed with setTimeout plus a stable toast id."
+}

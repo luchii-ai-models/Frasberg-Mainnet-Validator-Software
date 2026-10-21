@@ -123,7 +123,7 @@ class TestArchive:
         recs[0]["actor"] = "mallory"
         tampered = "\n".join(json.dumps(r, sort_keys=True, separators=(",", ":")) for r in recs) + "\n"
         bad = S.post(f"{A}/console/audit/archives/verify-upload", json={"content": tampered}).json()
-        assert bad["valid"] is False and bad["code"] in ("HASH_MISMATCH", "MANIFEST_MISMATCH"), bad
+        assert bad["valid"] is False and bad["code"] in ("HASH_MISMATCH", "MANIFEST_MISMATCH", "FIELD_MISMATCH"), bad
         cs = S.post(f"{A}/console/audit/archives/verify-upload", json={"content": content, "sha256": "0" * 64}).json()
         assert cs["valid"] is False and cs["code"] == "CHECKSUM_MISMATCH"
 

@@ -10,6 +10,9 @@ from typing import Optional
 from urllib.parse import urlencode
 
 import httpx
+from urllib.parse import urlparse
+
+from fastapi import Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
@@ -169,14 +172,8 @@ def register(api, store, db, required_versions, get_validator, alerting):
     @api.put("/console/audit/archive-schedule")
     async def archive_schedule_put(body: ScheduleBody):
         upd = body.model_dump(exclude_none=True)
-        if "timeUtc" in upd:
-            t = now()
-            due = t.replace(hour=int(upd["timeUtc"][:2]), minute=int(upd["timeUtc"][3:]), second=0, microsecond=0)
-            cur = await schedule_cfg()
-            if due > t and cur["lastRunDate"] == t.date().isoformat():
-                upd["lastRunDate"] = None
         await db.settings.update_one({"_id": "archive_schedule"}, {"$set": upd}, upsert=True)
-        await store.append_audit("ARCHIVE_SCHEDULE_UPDATED", "archive-admin", metadata={k: v for k, v in upd.items() if k != "lastRunDate"})
+        await store.append_audit("ARCHIVE_SCHEDULE_UPDATED", "archive-admin", metadata=upd)
         return await schedule_view()
 
     @api.post("/console/audit/archive-schedule/run")
@@ -234,9 +231,10 @@ def register(api, store, db, required_versions, get_validator, alerting):
 
     # ---------- Slack OAuth (incoming-webhook) ----------
     @api.get("/console/slack/oauth/start")
-    async def slack_oauth_start(origin: str):
-        if not origin.startswith("https://") and not origin.startswith("http://localhost"):
-            raise FrasError("INVALID_STATE", "origin must be https")
+    async def slack_oauth_start(origin: str, request: Request):
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+        if urlparse(origin).scheme != "https" or urlparse(origin).netloc != host:
+            raise FrasError("INVALID_STATE", "origin must be this console's https origin")
         state = secrets.token_urlsafe(24)
         redirect_uri = f"{origin.rstrip('/')}/api/console/slack/oauth/callback"
         await db.slack_oauth_states.insert_one({"_id": state, "redirectUri": redirect_uri, "origin": origin.rstrip("/"), "createdAt": now()})

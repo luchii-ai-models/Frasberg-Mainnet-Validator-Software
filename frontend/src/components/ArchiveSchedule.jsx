@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Field, Panel, Pill, useLoad } from "@/components/kit";
+import { toast } from "sonner";
 import { call } from "@/lib/api";
 
 const TONE = { success: "ok", skipped: "muted", failed: "bad" };
@@ -18,6 +19,11 @@ export const ArchiveSchedule = () => {
     if (!r) { setTime(d.timeUtc); setOlder(String(d.olderThanMinutes)); }
     reload();
   };
+  const submit = () => {
+    const n = Number(older);
+    if (older === "" || !Number.isInteger(n) || n < 0) { toast.error("INVALID_INPUT", { description: "Age must be a whole number of minutes ≥ 0" }); setOlder(String(d.olderThanMinutes)); return; }
+    save({ timeUtc: time, olderThanMinutes: n }, "Schedule saved");
+  };
   const runNow = async () => { const r = await call("post", "/console/audit/archive-schedule/run", null); if (r) reload(); };
   return (
     <Panel title="Daily archive schedule" testId="archive-schedule" className="mb-6"
@@ -27,8 +33,8 @@ export const ArchiveSchedule = () => {
           <Switch data-testid="archive-schedule-enabled-switch" checked={d.enabled} onCheckedChange={(c) => save({ enabled: c }, c ? "Schedule enabled" : "Schedule paused")} />daily export
         </label>
         <Field label="run at (UTC)"><Input data-testid="archive-schedule-time-input" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="font-mono text-xs bg-[#04060A] w-32" /></Field>
-        <Field label="only records older than (min)"><Input data-testid="archive-schedule-older-input" value={older} onChange={(e) => setOlder(e.target.value)} className="font-mono text-xs bg-[#04060A] w-40" /></Field>
-        <Button data-testid="archive-schedule-save-button" size="sm" onClick={() => save({ timeUtc: time, olderThanMinutes: Number(older) || 0 }, "Schedule saved")}>Save</Button>
+        <Field label="only records older than (min)"><Input data-testid="archive-schedule-older-input" type="number" min={0} value={older} onChange={(e) => setOlder(e.target.value)} className="font-mono text-xs bg-[#04060A] w-40" /></Field>
+        <Button data-testid="archive-schedule-save-button" size="sm" onClick={submit}>Save</Button>
         <Button data-testid="archive-schedule-run-button" size="sm" variant="secondary" onClick={runNow}>Run now</Button>
       </div>
       <div className="terminal p-3 font-mono text-[11px] max-h-56 overflow-auto scroll-thin space-y-1" data-testid="archive-schedule-history">

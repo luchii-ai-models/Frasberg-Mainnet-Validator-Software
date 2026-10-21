@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Field, Panel, Pill } from "@/components/kit";
+import { toast } from "sonner";
 import { call } from "@/lib/api";
 
 export const QuietHours = ({ cfg, active, pending, reload }) => {
@@ -13,7 +14,11 @@ export const QuietHours = ({ cfg, active, pending, reload }) => {
     if (!r) setF(cfg);
     reload();
   };
-  const submit = () => save({ quietStart: f.quietStart, quietEnd: f.quietEnd, quietMode: f.quietMode, escalationMinutes: Number(f.escalationMinutes) || 0 }, "Quiet hours saved");
+  const submit = () => {
+    const esc = Number(f.escalationMinutes);
+    if (f.escalationMinutes === "" || !Number.isInteger(esc) || esc < 0 || esc > 1440) { toast.error("INVALID_INPUT", { description: "Escalation must be a whole number of minutes (0–1440)" }); setF(cfg); return; }
+    save({ quietStart: f.quietStart, quietEnd: f.quietEnd, quietMode: f.quietMode, escalationMinutes: esc }, "Quiet hours saved");
+  };
   return (
     <Panel title="Quiet hours & escalation" testId="quiet-hours" className="mb-6"
       right={<><Pill tone={active ? "violet" : "muted"} testId="quiet-active-pill">{active ? "quiet now" : "normal"}</Pill>{pending > 0 && <Pill tone="warn" testId="digest-pending-pill">{pending} queued</Pill>}</>}>
@@ -31,7 +36,7 @@ export const QuietHours = ({ cfg, active, pending, reload }) => {
             ))}
           </div>
         </Field>
-        <Field label="escalate critical after (min, 0 = off)"><Input data-testid="escalation-minutes-input" value={f.escalationMinutes} onChange={(e) => setF({ ...f, escalationMinutes: e.target.value })} className="font-mono text-xs bg-[#04060A] w-40" /></Field>
+        <Field label="escalate critical after (min, 0 = off)"><Input data-testid="escalation-minutes-input" type="number" min={0} max={1440} value={f.escalationMinutes} onChange={(e) => setF({ ...f, escalationMinutes: e.target.value })} className="font-mono text-xs bg-[#04060A] w-40" /></Field>
         <Button data-testid="quiet-save-button" size="sm" onClick={submit}>Save</Button>
         {pending > 0 && <Button data-testid="digest-flush-button" size="sm" variant="secondary" onClick={() => call("post", "/console/alerts/digest/flush", null, "Digest sent").then(reload)}>Send digest now</Button>}
       </div>

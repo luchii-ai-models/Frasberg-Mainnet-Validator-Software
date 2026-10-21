@@ -52,7 +52,7 @@ export const FleetTrends = () => {
   const flagged = d ? d.drift.filter((v) => v.drifting || v.breach).length : 0;
   return (
     <Panel title="Fleet trends" testId="fleet-trends" className="mb-6"
-      right={<><Pill tone={flagged ? "warn" : "ok"} testId="fleet-drift-count">{flagged} drifting</Pill><Tabs items={["1h", "24h", "7d"]} value={range} onChange={setRange} prefix="fleet-trend-range" /></>}>
+      right={<><Pill tone={flagged ? "warn" : "ok"} testId="fleet-drift-count">{flagged} flagged</Pill><Tabs items={["1h", "24h", "7d"]} value={range} onChange={setRange} prefix="fleet-trend-range" /></>}>
       <div className="mb-4"><Tabs items={Object.keys(METRIC_LABEL)} value={metric} onChange={setMetric} prefix="fleet-trend-metric" /></div>
       <div className="grid lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3 h-72" data-testid="fleet-trend-chart">
