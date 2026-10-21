@@ -10,6 +10,7 @@ from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import Request, Response
 from pydantic import BaseModel, Field
 
+from auth import INTERNAL_TOKEN
 from core import FrasError
 from store import iso, now
 
@@ -112,6 +113,7 @@ def register(api, app, store, db):
             raise FrasError("INVALID_STATE", "Nested gateway calls are not allowed")
         fwd = {k: v for k, v in request.headers.items() if k.lower() in ("content-type", "accept", "x-request-id", "x-forwarded-host", "x-forwarded-proto", "x-forwarded-for")}
         fwd.setdefault("x-forwarded-host", request.headers.get("host", ""))
+        fwd["x-fras-internal"] = INTERNAL_TOKEN
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://gateway", timeout=60) as c:
             r = await c.request(request.method, f"/api/{path}", params=request.query_params.multi_items(), content=await request.body(), headers=fwd)
         await record(doc, request.method, path, r.status_code, probe)

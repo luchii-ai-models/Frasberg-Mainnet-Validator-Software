@@ -18,6 +18,7 @@ import artifacts  # noqa: E402
 import extras  # noqa: E402
 import ops  # noqa: E402
 import apikeys  # noqa: E402
+import auth  # noqa: E402
 import core  # noqa: E402
 import selftests  # noqa: E402
 from core import FrasError  # noqa: E402
@@ -136,6 +137,7 @@ async def seed():
     await extras_seed()
     await ops_seed()
     await apikeys_seed()
+    await auth_seed()
 
 
 # ---------- public validator API (spec endpoints) ----------
@@ -650,6 +652,7 @@ async def readiness():
 extras_seed, alerting = extras.register(api, store, db, required_versions, metric_snapshot, get_validator)
 ops_seed = ops.register(api, store, db, required_versions, get_validator, alerting)
 apikeys_seed = apikeys.register(api, app, store, db)
+auth_seed = auth.register(app, api, store, db)
 app.include_router(api)
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
                    allow_methods=["*"], allow_headers=["*"], expose_headers=["X-Request-ID"])
