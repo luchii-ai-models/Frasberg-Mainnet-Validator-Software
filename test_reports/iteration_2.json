@@ -1,0 +1,34 @@
+{
+  "summary": "Retest of the iteration_1 readiness/contention bug: FIXED. With the API, two acquires on the same lock give window5m acquired=1/denied=1, contentionRate 0.5, burnRate 0, lockAvailability 1.0, burnLevel healthy. Readiness then fails only 'Lock contention < 1%' (NO-GO). POST /api/console/metrics/reset-window clears the samples (samplesCleared>=2, audited SLO_WINDOW_RESET) and readiness returns to GO. In the UI, the Locks split-brain race (1 WIN) makes Metrics show contention 66.67%, burn 0.00x, availability 100%, and LockContentionRateHigh firing; Readiness shows NO-GO. Clicking reset-slo-window-button shows the 'SLO window reset (audited)' toast and slo-window-info shows 0/0, after which Readiness is GO 17/17. Revoke guard: revoking the active key returns 409 INVALID_STATE (API and UI toast with requestId), revoke is blocked in safe mode with 403 SAFE_MODE, and revoking a non-active key works. Regression: test_frasberg_api.py (18 tests incl. 3 new) all pass with -n0; the built-in runner gives 72/72.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/console/metrics (outboxSuccessRate)", "issue": "Outbox success rate still uses lifetime counters (35.29% after the fail/dead-letter tests) and has no window or reset. It is not a readiness check, so it is not blocking, but the same class of issue as the lock SLO."},
+      {"endpoint": "/api/console/metrics/reset-window", "issue": "Not guarded by safe mode (likely fine, since it is an operator recovery action)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Signing Keys", "issues": ["Revoke button is still shown on the ACTIVE key and only gives an error toast when clicked. Hide or disable it for status=active.", "The 'New key' field defaults to validator-key-002, which is revoked."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_frasberg_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Optional: hide or disable the Revoke button for the active key on the Keys page",
+    "Optional: window the outbox success rate as well, or include it in reset-window"
+  ],
+  "critical_code_review_comments": [
+    "acquire_lock: DuplicateKeyError -> denied sample (excluded from availability) and other exceptions -> error sample. Logic is correct. lock_samples has a 2h TTL index, which covers the 1h window.",
+    "The self-test runner uses Store(prefix='selftest_'), so its lock samples do not pollute the live window (confirmed: readiness GO after the 72/72 run plus reset)",
+    "selftests.py is still >700 lines (from iteration_1)"
+  ],
+  "updated_files": ["/app/backend/tests/test_frasberg_api.py (added TestSloWindow, TestRevokeGuard; reset-window before final GO assertion)"],
+  "success_rate": {"backend": "100% (18/18 pytest, 72/72 built-in)", "frontend": "100% of requested flows"},
+  "test_credentials": "None - no auth",
+  "seed_data_creation": "Extra revoked TEST signing keys (validator-key-002..009 now revoked), TEST_lock_* and split-brain locks",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: REACT_APP_BACKEND_URL=... pytest /app/backend/tests/test_frasberg_api.py -n0. Final state left: validator 6.4.1 stable epoch 900, settings clear, outbox 0 pending / 0 dead, validator-key-001 active, SLO window reset, readiness GO 17/17. Note: lock contention tests leave denials in the 5m window, so call POST /api/console/metrics/reset-window before asserting GO."
+}

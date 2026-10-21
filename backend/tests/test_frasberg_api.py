@@ -215,6 +215,53 @@ class TestRollbacks:
             clear_settings()
 
 
+# ---- SLO window (iteration_2 fix: contention no longer breaks availability; reset-window recovers readiness) ----
+def readiness_check(rd, name):
+    return next(c for c in rd["checks"] if c["name"] == name)
+
+
+class TestSloWindow:
+    def test_contention_window_and_reset(self):
+        S.post(f"{A}/console/metrics/reset-window")
+        n = f"TEST_lock_{uuid.uuid4().hex[:6]}"
+        t1 = S.post(f"{A}/console/locks/acquire", json={"name": n, "owner": "node-a"}).json()["token"]
+        env_err(S.post(f"{A}/console/locks/acquire", json={"name": n, "owner": "node-b"}), "ROTATION_IN_PROGRESS", 409)
+        m = S.get(f"{A}/console/metrics").json()
+        assert m["window5m"]["denied"] == 1 and m["window5m"]["acquired"] == 1, m["window5m"]
+        assert m["burnRate"] == 0 and m["lockAvailability"] == 1.0 and m["burnLevel"] == "healthy"
+        assert m["contentionRate"] == 0.5
+        rd = S.get(f"{A}/console/readiness").json()
+        assert readiness_check(rd, "Lock contention < 1%")["passed"] is False
+        assert readiness_check(rd, "Burn rate healthy")["passed"] is True
+        assert rd["decision"] == "NO-GO"
+        S.post(f"{A}/console/locks/release", json={"name": n, "token": t1})
+        r = S.post(f"{A}/console/metrics/reset-window")
+        assert r.status_code == 200 and r.json()["samplesCleared"] >= 2, r.text
+        m = S.get(f"{A}/console/metrics").json()
+        assert m["window5m"] == {"acquired": 0, "denied": 0, "error": 0} and m["contentionRate"] == 0
+        rd = S.get(f"{A}/console/readiness").json()
+        assert readiness_check(rd, "Lock contention < 1%")["passed"] is True
+        recs = S.get(f"{A}/console/audit?event_type=SLO_WINDOW_RESET&limit=500").json()["records"]
+        assert len(recs) >= 1
+
+
+class TestRevokeGuard:
+    def test_revoke_active_blocked(self):
+        k = active_key()
+        env_err(S.post(f"{A}/console/keys/{k['key_id']}/revoke"), "INVALID_STATE", 409)
+        assert active_key()["key_id"] == k["key_id"]
+
+    def test_revoke_nonactive_ok_and_safe_mode_blocks(self):
+        new = S.post(f"{A}/console/keys").json()
+        try:
+            S.put(f"{A}/console/settings", json={"safeMode": True})
+            env_err(S.post(f"{A}/console/keys/{new['key_id']}/revoke"), "SAFE_MODE", 403)
+        finally:
+            clear_settings()
+        r = S.post(f"{A}/console/keys/{new['key_id']}/revoke")
+        assert r.status_code == 200 and r.json()["status"] == "revoked", r.text
+
+
 # ---- test runner + readiness ----
 class TestRunnerReadiness:
     def test_readiness_nogo_when_old(self):
@@ -230,5 +277,6 @@ class TestRunnerReadiness:
         for _ in range(3):
             S.post(f"{A}/console/outbox/expire-claims")
             S.post(f"{A}/console/outbox/publish", json={})
+        S.post(f"{A}/console/metrics/reset-window")  # clear contention from TestLocks / TestSloWindow
         rd = S.get(f"{A}/console/readiness").json()
         assert rd["decision"] == "GO", [c for c in rd["checks"] if not c["passed"]]

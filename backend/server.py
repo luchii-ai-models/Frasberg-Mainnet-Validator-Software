@@ -466,6 +466,8 @@ async def metric_snapshot():
     acq, failed = await c("rotation_lock_acquired_total"), await c("rotation_lock_acquire_failed_total")
     w5, w1h = await store.lock_window(300), await store.lock_window(3600)
     attempts, success = await c("audit_outbox_publish_attempts_total"), await c("audit_outbox_publish_success_total")
+    base = (await store.settings.find_one({"_id": "outbox_baseline"})) or {"attempts": 0, "success": 0}
+    attempts, success = attempts - base["attempts"], success - base["success"]
     avail_den = w1h["acquired"] + w1h["error"]
     availability = w1h["acquired"] / avail_den if avail_den else 1.0
     burn = (1 - availability) / 0.0005
@@ -503,6 +505,8 @@ async def metric_snapshot():
 @api.post("/console/metrics/reset-window")
 async def metrics_reset_window():
     removed = (await store.lock_samples.delete_many({})).deleted_count
+    await store.settings.update_one({"_id": "outbox_baseline"}, {"$set": {"attempts": await store.counter("audit_outbox_publish_attempts_total"),
+                                    "success": await store.counter("audit_outbox_publish_success_total")}}, upsert=True)
     await store.append_audit("SLO_WINDOW_RESET", "validator-ops", metadata={"samplesCleared": removed})
     return {"samplesCleared": removed}
 

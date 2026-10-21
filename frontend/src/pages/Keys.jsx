@@ -35,7 +35,7 @@ export default function Keys() {
                 <TableCell className="font-mono text-xs text-slate-500">{k.created_at?.slice(0, 19)}</TableCell>
                 <TableCell className="font-mono text-xs text-slate-500">{k.revoked_at?.slice(0, 19) || "—"}</TableCell>
                 <TableCell className="text-right">
-                  {k.status !== "revoked" && <Button data-testid={`revoke-key-${k.key_id}`} size="sm" variant="destructive" onClick={() => act("post", `/console/keys/${k.key_id}/revoke`, null, `${k.key_id} revoked`)}>Revoke</Button>}
+                  {!["revoked", "active"].includes(k.status) && <Button data-testid={`revoke-key-${k.key_id}`} size="sm" variant="destructive" onClick={() => act("post", `/console/keys/${k.key_id}/revoke`, null, `${k.key_id} revoked`)}>Revoke</Button>}
                 </TableCell>
               </TableRow>
             ))}
