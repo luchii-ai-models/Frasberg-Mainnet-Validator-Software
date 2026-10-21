@@ -1,0 +1,102 @@
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --bg: #07090E;
+    --surface: #0F131D;
+    --surface-hover: #161B29;
+    --line: #1E2638;
+    --line-active: #2E3A54;
+    --cyan: #00F0FF;
+    --green: #00E676;
+    --amber: #FFB300;
+    --red: #FF3366;
+    --violet: #8B5CF6;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: #F8FAFC;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgba(0, 240, 255, 0.25); color: #fff; }
+
+.font-heading { font-family: "Cabinet Grotesk", "Outfit", sans-serif; }
+.font-mono, code, pre { font-family: "JetBrains Mono", monospace; }
+
+.grid-bg {
+    background-image: linear-gradient(rgba(30, 38, 56, 0.35) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 38, 56, 0.35) 1px, transparent 1px);
+    background-size: 48px 48px;
+}
+
+.noise::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    z-index: 1;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    transition: border-color 200ms ease, background-color 200ms ease;
+}
+.panel:hover { border-color: var(--line-active); }
+
+.terminal { background: #04060A; border: 1px solid var(--line); border-radius: 4px; }
+
+@keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.8); } }
+.dot { width: 8px; height: 8px; border-radius: 9999px; display: inline-block; animation: pulse-dot 2s ease-in-out infinite; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.rise { animation: rise 420ms cubic-bezier(.2, .8, .2, 1) both; }
+.rise-1 { animation-delay: 60ms; } .rise-2 { animation-delay: 120ms; } .rise-3 { animation-delay: 180ms; } .rise-4 { animation-delay: 240ms; }
+
+@keyframes scan { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.scanline { position: relative; overflow: hidden; }
+.scanline::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.08), transparent); animation: scan 3.5s linear infinite; }
+
+.scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: var(--line-active); border-radius: 6px; }
+
+@layer base {
+    :root {
+        --background: 222 33% 4%;
+        --foreground: 210 40% 98%;
+        --card: 222 32% 9%;
+        --card-foreground: 210 40% 98%;
+        --popover: 222 32% 9%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 184 100% 50%;
+        --primary-foreground: 222 33% 4%;
+        --secondary: 222 26% 15%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 222 26% 15%;
+        --muted-foreground: 215 20% 65%;
+        --accent: 222 26% 15%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 345 100% 60%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 222 30% 17%;
+        --input: 222 30% 17%;
+        --ring: 184 100% 50%;
+        --radius: 0.375rem;
+    }
+}
+
+@layer base {
+    * { @apply border-border; }
+    body { @apply bg-background text-foreground; }
+}

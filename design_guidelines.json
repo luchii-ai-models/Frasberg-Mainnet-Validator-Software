@@ -1,0 +1,77 @@
+{
+  "project_name": "Frasberg Mainnet Validator Software Console",
+  "app_type": "dashboard",
+  "theme": "dark",
+  "archetype": "THE PERFORMANCE PRO (Tactical Obsidian & Cyber Cryptographic)",
+  "typography": {
+    "heading_font": "Cabinet Grotesk, Outfit, sans-serif",
+    "body_font": "Plus Jakarta Sans, sans-serif",
+    "mono_font": "JetBrains Mono, monospace",
+    "hierarchy": {
+      "h1": "text-3xl sm:text-4xl font-bold tracking-tight font-heading",
+      "h2": "text-xl sm:text-2xl font-semibold tracking-tight font-heading",
+      "h3": "text-lg font-medium font-heading",
+      "body": "text-sm text-slate-300 font-body leading-relaxed",
+      "code_mono": "font-mono text-xs tracking-wide uppercase text-cyan-400"
+    },
+    "forbidden_fonts": ["space grotesk", "inter for headings"]
+  },
+  "colors": {
+    "background": "#07090E",
+    "surface": "#0F131D",
+    "surface_hover": "#161B29",
+    "border": "#1E2638",
+    "border_active": "#2E3A54",
+    "primary": "#00F0FF",
+    "primary_dark": "#00B8C4",
+    "accent_green": "#00E676",
+    "accent_amber": "#FFB300",
+    "accent_red": "#FF3366",
+    "accent_purple": "#8B5CF6",
+    "text_primary": "#F8FAFC",
+    "text_secondary": "#94A3B8",
+    "text_muted": "#64748B",
+    "forbidden_colors": ["#1B93A4", "pure #000000 background", "heavy full-screen gradients"]
+  },
+  "layout": {
+    "grid_strategy": "MODE B: High Density Grid (1px Grid Borders & Bento Widgets)",
+    "container_padding": "p-4 sm:p-6 lg:p-8",
+    "gap": "gap-4 sm:gap-6",
+    "card_style": "bg-[#0F131D] border border-[#1E2638] rounded-md p-5 shadow-inner hover:border-[#2E3A54] transition-colors"
+  },
+  "visual_enhancers": {
+    "borders": "1px crisp solid borders with subtle inner glow for active states",
+    "status_indicators": "Pulsing micro-dots (emerald for operational, amber for warning, red for degraded)",
+    "terminal_boxes": "Deep black #04060A container with crisp cyan/emerald JetBrains Mono logs",
+    "charts": "Accessible high-contrast Recharts/Shadcn area & bar charts with zero blur clutter"
+  },
+  "key_features_layout": [
+    "Overview & Live Status Hub (Version: fras_val_001, v6.4.1, Luchii v4.2.0, Epoch 900, 5% Commission)",
+    "Required Versions Schedule (Epochs 100/200/300/400/900 status matrix)",
+    "Ed25519 Canonical Policy Signing & Verification Console",
+    "Signing Key Lifecycle Matrix (active, rotating, retired, revoked)",
+    "Immutable Hash-Chained Audit Log Explorer with Verifier & Tamper Simulator",
+    "Audit Outbox Engine (Queue, Retry, Dead-Letter, Replay controls)",
+    "Distributed Rotation Locks & Fencing Tokens Inspector",
+    "Prometheus-Style Metrics & SLO Burn Rate Gauges (Uptime, Vote %, Missed Blocks, API Avail)",
+    "Rollback Approval Gates (L1-L4 Sign-off Workflow)",
+    "Mainnet Readiness Gate (GO/NO-GO Evaluator)",
+    "Built-in Test Runner UI (Property, Tamper, Lock Race & Chaos Scenarios)"
+  ],
+  "components_and_ui": {
+    "toasts": "Sonner from @/components/ui/sonner",
+    "shadcn_primitives": ["Badge", "Button", "Card", "Dialog", "DropdownMenu", "Input", "Progress", "Select", "Table", "Tabs", "Tooltip"],
+    "icons": "Lucide React icons or Phosphor icons",
+    "testing_rule": "ALL interactive buttons, inputs, tabs, modal triggers, and status panels MUST include explicit kebab-case data-testid attributes (e.g. data-testid='policy-sign-button', data-testid='audit-tamper-toggle')"
+  },
+  "image_urls": {
+    "server_infrastructure": "https://images.pexels.com/photos/37605913/pexels-photo-37605913.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+  },
+  "instructions_to_main_agent": [
+    "Implement open validator console UI without login required per user choice.",
+    "Ensure MongoDB data models and live FastAPI endpoints under /v1/ validator namespace synchronize seamlessly.",
+    "Include live interactive test runner inside the console for immediate execution of property, tamper, lock race, and chaos tests.",
+    "Maintain strict high contrast dark-mode cyberpunk aesthetic with clear visual telemetry and zero cramped spacing.",
+    "Verify all key UI actions have data-testid attributes attached for automated compliance checks."
+  ]
+}
