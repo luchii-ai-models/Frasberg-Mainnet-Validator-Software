@@ -156,6 +156,9 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
             return {"valid": False, "code": "INVALID_NDJSON", "sha256": sha}
         if not recs:
             return {"valid": False, "code": "EMPTY_ARCHIVE", "sha256": sha}
+        need = ("sequence", "previous_hash", "current_hash", "payload")
+        if not all(isinstance(r, dict) and all(k in r for k in need) and isinstance(r["sequence"], int) for r in recs):
+            return {"valid": False, "code": "INVALID_RECORD", "sha256": sha}
         chain = core.verify_audit_chain(recs, start_prev or recs[0]["previous_hash"], start_seq or recs[0]["sequence"])
         checksum_ok = manifest_sha is None or sha == manifest_sha
         return {"valid": checksum_ok and chain["valid"], "code": chain["code"] if checksum_ok else "CHECKSUM_MISMATCH", "sha256": sha,
@@ -273,11 +276,13 @@ def register(api, store, db, required_versions, metric_snapshot, get_validator):
         sent = []
         for a in alerts:
             inhibited_by = next((s["name"] for s in firing if s["name"] != a["name"] and core.is_inhibited(s["name"], a["name"], {"environment": "prod"})), None)
-            prev = await alert_state.find_one({"_id": a["name"]}) or {"firing": False}
+            prev = await alert_state.find_one({"_id": a["name"]}) or {"firing": False, "notified": False}
             if a["firing"] == prev["firing"]:
                 continue
-            await alert_state.update_one({"_id": a["name"]}, {"$set": {"firing": a["firing"], "since": iso(), "inhibitedBy": inhibited_by}}, upsert=True)
-            if inhibited_by:
+            notify = (not inhibited_by) if a["firing"] else prev.get("notified", False)
+            await alert_state.update_one({"_id": a["name"]}, {"$set": {"firing": a["firing"], "since": iso(), "inhibitedBy": inhibited_by,
+                                                                    "notified": a["firing"] and notify}}, upsert=True)
+            if not notify:
                 continue
             receiver, channel = route_alert(a)
             sent.append(await deliver(a, "firing" if a["firing"] else "resolved", receiver, channel, cfg))

@@ -49,7 +49,7 @@ class TestPublic:
 
     def test_schedule_metrics(self):
         sch = S.get(f"{A}/v1/network/schedule").json()
-        assert [x["epoch"] for x in sch] == [100, 200, 300, 400, 900]
+        assert [x["epoch"] for x in sch] == [100, 200, 300, 400, 900, 1000]
         r = S.get(f"{A}/metrics")
         assert r.status_code == 200 and "text/plain" in r.headers["content-type"] and "audit_outbox_pending_total" in r.text
 

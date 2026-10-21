@@ -56,10 +56,10 @@ export default function Fleet() {
   if (!d) return null;
   const s = d.summary;
   const rows = d.validators.filter((v) => filter === "all" || (filter === "issues" ? !v.delegationEligible : v.delegationEligible));
-  const remove = async (id) => { if (await call("delete", `/console/fleet/${id}`, null, `${id} deregistered`)) reload(); };
+  const remove = async (id) => { if (!window.confirm(`Deregister ${id}? This is recorded in the audit log.`)) return; if (await call("delete", `/console/fleet/${id}`, null, `${id} deregistered`)) reload(); };
   return (
     <div>
-      <PageHeader kicker={`${s.total} validators · epoch policy ${d.upcoming ? `next ${d.upcoming.epoch}` : ""}`} title="Validator Fleet">
+      <PageHeader kicker={`${s.total} validators${d.upcoming ? ` · next requirement epoch ${d.upcoming.epoch}` : ""}`} title="Validator Fleet">
         {["all", "eligible", "issues"].map((k) => (
           <button key={k} data-testid={`fleet-filter-${k}`} onClick={() => setFilter(k)}
             className={`font-mono text-[11px] px-2.5 py-1 rounded-sm border transition-colors ${filter === k ? "border-cyan-400 text-cyan-300 bg-cyan-400/10" : "border-[#1E2638] text-slate-400"}`}>{k}</button>

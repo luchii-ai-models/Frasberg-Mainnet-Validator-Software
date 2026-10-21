@@ -358,6 +358,9 @@ def verify_audit_chain(records, start_prev=GENESIS, start_seq=1):
             return {"valid": False, "code": "SEQUENCE_GAP", "brokenAt": i, "sequence": r["sequence"]}
         if r["previous_hash"] != prev:
             return {"valid": False, "code": "BROKEN_LINKAGE", "brokenAt": i, "sequence": r["sequence"]}
+        pl = r["payload"] if isinstance(r.get("payload"), dict) else {}
+        if any(k in r and r[k] != pl.get(pk) for k, pk in (("event_id", "id"), ("event_type", "type"), ("actor", "actor"), ("timestamp", "timestamp"))):
+            return {"valid": False, "code": "FIELD_MISMATCH", "brokenAt": i, "sequence": r["sequence"]}
         if hash_audit_record(r["previous_hash"], r["payload"]) != r["current_hash"]:
             return {"valid": False, "code": "HASH_MISMATCH", "brokenAt": i, "sequence": r["sequence"]}
         prev = r["current_hash"]

@@ -15,7 +15,7 @@ export default function Alerts() {
     const body = {};
     if (slack) body.slackWebhookUrl = slack;
     if (pd) body.pagerdutyRoutingKey = pd;
-    run("put", "/console/alerts/config", body, "Alert destinations saved").then(() => { setSlack(""); setPd(""); });
+    call("put", "/console/alerts/config", body, "Alert destinations saved").then((r) => { if (r) { setSlack(""); setPd(""); } reload(); });
   };
   const firing = d.alerts.filter((a) => a.firing).length;
   const live = d.config.slackConfigured || d.config.pagerdutyConfigured;

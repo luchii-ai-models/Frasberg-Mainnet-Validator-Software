@@ -26,6 +26,12 @@
 - Windowed SLOs (5m contention, 1h availability), alert evaluation, reset SLO window action
 - Readiness GO/NO-GO (17 checks)
 
+## Iteration 2 (2026-06)
+- Validator Fleet View: 8 seeded validators + self, side-by-side compliance/health/delegation + epoch-1000 readiness; register/edit/remove (audited)
+- Audit Archive Export: contiguous write-once NDJSON archives with SHA-256 manifest, .sha256 download, re-verify (checksum + chain segment + live log), verify uploaded files; chain verify cross-checks denormalized fields
+- Live Alert Delivery: Alertmanager-style routing (critical→PagerDuty, warning→Slack), inhibition, firing/resolved dedup, 60s auto-dispatch, delivery log; DRY-RUN until Slack webhook / PagerDuty routing key is saved on the Alerts page
+- Upgrade Countdown: new epoch 1000 requirement (core ≥6.4.0, luchii ≥4.2.0); timeline of 30-day notice → 14-day window → grace epoch with live countdown and fleet readiness (1 epoch = 10h demo clock)
+
 ## Notes / limitations
 - Mongo is standalone (no replica set): multi-doc transactions emulated via ordering + atomic single-doc ops
 - Event bus is SIMULATED in MongoDB; Ed25519 private keys stored in Mongo (demo — use KMS/HSM in production)

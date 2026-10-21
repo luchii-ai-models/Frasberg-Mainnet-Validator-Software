@@ -1,0 +1,40 @@
+{
+  "summary": "Tested the four new features (Fleet, Audit Archive, Alert Delivery, Upgrade Countdown) end to end, plus regression. Backend: new file test_extras_api.py has 15 tests and 14 pass. The one failure is a real bug: verify-upload returns 500 on valid JSON that is not an audit record. test_frasberg_api.py passes 18/18 after updating the schedule assertion to include epoch 1000. The built-in runner gives 72/72. Fleet: 9 validators and every seeded failure matches the request (005 VERSION_TOO_OLD, 006 INVALID_CHANNEL, 007 maxCommission, 008 unhealthy + minStake, 009 identityCompliance). Duplicate or self id returns 409, bad semver 400, bad id pattern 422. Editing 005 to 6.4.1 makes it eligible (then restored). The self validator cannot be edited or deleted through the fleet endpoints (409). Archive: exports are contiguous and start at nextSequence; download sends X-Checksum-SHA256 matching sha256(body); the checksum file has the 'sha  file' format; verify gives CHAIN_VALID, checksumMatches and matchesLiveLog; verify-upload works for original, tampered (MANIFEST_MISMATCH / HASH_MISMATCH) and wrong-sha (CHECKSUM_MISMATCH) content; live records are kept. Alerts: routing is correct, the test endpoint logs 2 dry_run notifications, and dispatch sends firing, then dedups, then resolved after reset-window. A Slack URL that is not hooks.slack.com returns 409. Upgrades: epochs 100..1000, epoch 1000 is in announcement with all 3 phases, self is ready, fleet is 5/9. UI: all the listed pages, buttons, filters, the editor dialog, archive verify and file-upload verify, the alerts buttons and log, the ticking countdown and the phase pill work, and the 3 new nav items route correctly. Final state: readiness GO, fleet at seed values, self 6.4.1 stable.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/console/audit/archives/verify-upload", "issue": "Returns 500 (KeyError 'previous_hash' at extras.py:159 in verify_ndjson) when a line is valid JSON but not an audit record, e.g. '{\"a\":1}' or '[1,2]'. It should return valid=false with code INVALID_RECORD. Fix: wrap the chain check, or check that each record is a dict containing sequence, previous_hash, current_hash and payload."},
+      {"endpoint": "POST /api/console/audit/archives/verify-upload (and core.verify_audit_chain)", "issue": "The hash covers only previous_hash + payload. The duplicated top-level fields (actor, event_type, timestamp, event_id, retention) are not checked against the payload. Changing a top-level actor or event_type in a downloaded NDJSON still gives chain CHAIN_VALID. It is only caught because the manifest SHA differs (MANIFEST_MISMATCH), so a file with no matching manifest (UNKNOWN_ARCHIVE) would still pass the chain check. Suggest checking record.actor == payload.actor, event_type == payload.type, event_id == payload.id and timestamp == payload.timestamp."},
+      {"endpoint": "dispatch() in extras.py", "issue": "When an alert is inhibited, its state is updated but no firing notification is sent. If it later resolves after the inhibiting alert clears, a 'resolved' notification is sent with no matching firing. Resolved summaries also show value=None."},
+      {"endpoint": "GET /api/console/upgrades", "issue": "Epochs 100..400 report selfReady=false and fleetReady=0/9 because 6.4.1 is checked against the old maximums. This is harmless in the UI (only the minimums are shown), but the API is misleading for enforced requirements."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Alerts Destinations", "issue": "saveCfg clears the Slack and PagerDuty inputs even when the PUT fails (409), so the user has to retype them", "selector": "[data-testid='alerts-save-config-button']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Fleet", "issues": ["Remove (fleet-delete-*) deletes immediately with no confirmation dialog", "The kicker reads 'epoch policy next 1000'. The wording is a bit awkward."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_extras_api.py", "/app/backend/tests/test_frasberg_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix the verify-upload 500 on records missing fields (extras.py verify_ndjson). It should return valid=false, code INVALID_RECORD.",
+    "Cross-check top-level audit record fields against the payload in verify_audit_chain or verify_ndjson, so tampering with denormalized fields is detected without a manifest",
+    "Optional: keep the alert config inputs when the save fails; add a confirmation before fleet Remove; skip 'resolved' notifications for alerts that never sent 'firing'"
+  ],
+  "critical_code_review_comments": [
+    "extras.py (377 lines) is well structured. Fleet/alert/upgrade endpoints exclude _id and secrets are not returned (config gives only *Configured flags).",
+    "The 60s auto-dispatch loop can race with manual dispatch (both read alert_state, then update), which could cause a duplicate notification. Use find_one_and_update with a firing-state filter so the transition is atomic.",
+    "archive_create: two concurrent exports compute the same start. The unique archive_id index blocks the second only when the ranges are identical; overlapping ranges with different end sequences could both be inserted. Use a unique index on from_sequence.",
+    "Archives store the full content inline in a Mongo document (16MB doc limit). Fine for now, but large ranges need chunking or GridFS."
+  ],
+  "updated_files": ["/app/backend/tests/test_extras_api.py (new)", "/app/backend/tests/test_frasberg_api.py (schedule assertion now includes epoch 1000)"],
+  "success_rate": {"backend": "97% (32/33 pytest; 72/72 built-in)", "frontend": "100% of requested flows"},
+  "test_credentials": "None - no auth",
+  "seed_data_creation": "Extra audit archives (audit_log_000021_000123, 000124_000165, 000166_000204 and more from pytest). Delivery log has dry_run test and LockContentionRateHigh entries. TEST fleet nodes were deleted, and fras_val_005 was restored to its seed values.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: REACT_APP_BACKEND_URL=... pytest /app/backend/tests/ -n0. test_verify_upload_garbage fails until the verify_ndjson KeyError is fixed. Alert dispatch tests tolerate the 60s background auto-dispatch by also checking the delivery log. Final state: readiness GO, self 6.4.1 stable epoch 900, fleet at its 9 seed validators, no alert destinations configured."
+}
